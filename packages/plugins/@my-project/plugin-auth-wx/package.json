@@ -1,5 +1,5 @@
 {
-  "name": "@nocobase/plugin-auth-wx",
+  "name": "@my-project/plugin-auth-wx",
   "displayName": "Auth: WeChat",
   "displayName.ru-RU": "Аутентификация: WeChat",
   "displayName.zh-CN": "认证：微信",
