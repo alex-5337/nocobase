@@ -8,9 +8,6 @@
   "description.zh-CN": "通过微信授权认证身份。",
   "version": "1.9.13",
   "main": "./dist/server/index.js",
-  "homepage": "https://docs.nocobase.com/handbook/auth-wechat",
-  "homepage.ru-RU": "https://docs-ru.nocobase.com/handbook/auth-wechat",
-  "homepage.zh-CN": "https://docs-cn.nocobase.com/handbook/auth-wechat",
   "license": "AGPL-3.0",
   "devDependencies": {
     "@formily/react": "2.x",
