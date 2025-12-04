@@ -59,6 +59,14 @@ export const useExactDateVariable = ({ schema, targetFieldSchema }: Props = {}) 
         if (key === 'today') return 'todayDate';
         if (key === 'yesterday') return 'yesterdayDate';
         if (key === 'tomorrow') return 'tomorrowDate';
+        // 新增：本月第一天
+        if (key === 'thisMonthFirstDay') return 'thisMonthFirstDayDate';
+        if (key === 'lastMonthFirstDay') return 'lastMonthFirstDayDate';
+        if (key === 'nextMonthFirstDay') return 'nextMonthFirstDayDate';
+        // 新增：本周第一天
+        if (key === 'thisWeekFirstDay') return 'thisWeekFirstDayDate';
+        if (key === 'lastWeekFirstDay') return 'lastWeekFirstDayDate';
+        if (key === 'nextWeekFirstDay') return 'nextWeekFirstDayDate';
       }
       if (dateOnly) {
         if (key === 'now') {
@@ -92,6 +100,44 @@ export const useExactDateVariable = ({ schema, targetFieldSchema }: Props = {}) 
         key: 'tomorrow',
         value: getDateKeys('tomorrow'),
         label: t('Tomorrow'),
+        operators: datetime,
+      },
+      // 新增：本月第一天
+      {
+        key: 'thisMonthFirstDay',
+        value: getDateKeys('thisMonthFirstDay'),
+        label: t('This month first day'),
+        operators: datetime,
+      },
+      {
+        key: 'lastMonthFirstDay',
+        value: getDateKeys('lastMonthFirstDay'),
+        label: t('Last month first day'),
+        operators: datetime,
+      },
+      {
+        key: 'nextMonthFirstDay',
+        value: getDateKeys('nextMonthFirstDay'),
+        label: t('Next month first day'),
+        operators: datetime,
+      },
+      // 新增：本周第一天
+      {
+        key: 'thisWeekFirstDay',
+        value: getDateKeys('thisWeekFirstDay'),
+        label: t('This week first day'),
+        operators: datetime,
+      },
+      {
+        key: 'lastWeekFirstDay',
+        value: getDateKeys('lastWeekFirstDay'),
+        label: t('Last week first day'),
+        operators: datetime,
+      },
+      {
+        key: 'nextWeekFirstDay',
+        value: getDateKeys('nextWeekFirstDay'),
+        label: t('Next week first day'),
         operators: datetime,
       },
     ].filter((v) => v.value);

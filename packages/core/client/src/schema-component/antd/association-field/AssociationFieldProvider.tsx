@@ -61,7 +61,7 @@ export const AssociationFieldProvider = observer(
         if (!fieldSchema.default) {
           return Promise.reject(null);
         }
-        if (!['Picker', 'Select'].includes(currentMode)) {
+        if (!['Picker', 'Select', 'multiple', 'tags'].includes(currentMode)) {
           return Promise.reject(null);
         }
         if (!_.isObject(fieldSchema.default)) {
@@ -109,7 +109,7 @@ export const AssociationFieldProvider = observer(
         return;
       }
       // TODO：这个判断不严谨
-      if (['Picker', 'Select'].includes(currentMode) && fieldSchema.default) {
+      if (['Picker', 'Select', 'multiple', 'tags'].includes(currentMode) && fieldSchema.default) {
         run();
       }
       // 如果是表单模板数据，使用子表单和子表格组件时，过滤掉关系 ID

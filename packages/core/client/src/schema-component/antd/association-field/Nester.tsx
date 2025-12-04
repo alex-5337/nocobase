@@ -91,10 +91,11 @@ const ToOneNester = (props) => {
       }
 
       // 当 Field component 不是下列组件时，不允许设置默认值
+      // 允许 'multiple' 和 'tags' 模式的选择组件也设置默认值
       if (
         collectionField.target &&
         fieldSchema['x-component-props']?.mode &&
-        !['Picker', 'Select'].includes(fieldSchema['x-component-props'].mode)
+        !['Picker', 'Select', 'multiple', 'tags'].includes(fieldSchema['x-component-props'].mode)
       ) {
         return false;
       }
@@ -184,10 +185,11 @@ const ToManyNester = observer(
       }
 
       // 当 Field component 不是下列组件时，不允许设置默认值
+      // 允许 'multiple' 和 'tags' 模式的选择组件也设置默认值
       if (
         collectionField.target &&
         fieldSchema['x-component-props']?.mode &&
-        !['Picker', 'Select'].includes(fieldSchema['x-component-props'].mode)
+        !['Picker', 'Select', 'multiple', 'tags'].includes(fieldSchema['x-component-props'].mode)
       ) {
         return false;
       }

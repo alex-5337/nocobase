@@ -197,6 +197,16 @@ const getEnd = (offset: any, unit: any) => {
     .endOf(unit);
 };
 
+// 获取本月第一天
+const getMonthFirstDay = (offset: any) => {
+  return dayjs().add(offset, 'month').startOf('month');
+};
+
+// 获取本周第一天（周一）
+const getWeekFirstDay = (offset: any) => {
+  return dayjs().add(offset, 'week').startOf('isoWeek');
+};
+
 export const getDateRanges = (props?: {
   /** 日期是否是 UTC 格式 */
   utc?: boolean;
@@ -283,6 +293,26 @@ export const getDateExact = () => {
     tomorrowUtc: () => dayjs().add(1, 'day').startOf('day').utc().toISOString(),
     tomorrowLocal: () => dayjs().add(1, 'day').startOf('day').format('YYYY-MM-DD HH:mm:ss'),
     tomorrowDate: () => dayjs().add(1, 'day').format('YYYY-MM-DD'),
+    // 本月第一天
+    thisMonthFirstDayUtc: () => getMonthFirstDay(0).utc().toISOString(),
+    thisMonthFirstDayLocal: () => getMonthFirstDay(0).format('YYYY-MM-DD HH:mm:ss'),
+    thisMonthFirstDayDate: () => getMonthFirstDay(0).format('YYYY-MM-DD'),
+    lastMonthFirstDayUtc: () => getMonthFirstDay(-1).utc().toISOString(),
+    lastMonthFirstDayLocal: () => getMonthFirstDay(-1).format('YYYY-MM-DD HH:mm:ss'),
+    lastMonthFirstDayDate: () => getMonthFirstDay(-1).format('YYYY-MM-DD'),
+    nextMonthFirstDayUtc: () => getMonthFirstDay(1).utc().toISOString(),
+    nextMonthFirstDayLocal: () => getMonthFirstDay(1).format('YYYY-MM-DD HH:mm:ss'),
+    nextMonthFirstDayDate: () => getMonthFirstDay(1).format('YYYY-MM-DD'),
+    // 本周第一天
+    thisWeekFirstDayUtc: () => getWeekFirstDay(0).utc().toISOString(),
+    thisWeekFirstDayLocal: () => getWeekFirstDay(0).format('YYYY-MM-DD HH:mm:ss'),
+    thisWeekFirstDayDate: () => getWeekFirstDay(0).format('YYYY-MM-DD'),
+    lastWeekFirstDayUtc: () => getWeekFirstDay(-1).utc().toISOString(),
+    lastWeekFirstDayLocal: () => getWeekFirstDay(-1).format('YYYY-MM-DD HH:mm:ss'),
+    lastWeekFirstDayDate: () => getWeekFirstDay(-1).format('YYYY-MM-DD'),
+    nextWeekFirstDayUtc: () => getWeekFirstDay(1).utc().toISOString(),
+    nextWeekFirstDayLocal: () => getWeekFirstDay(1).format('YYYY-MM-DD HH:mm:ss'),
+    nextWeekFirstDayDate: () => getWeekFirstDay(1).format('YYYY-MM-DD'),
   };
 };
 function withParams(value: any[], params: { fieldOperator?: string; isParsingVariable?: boolean }) {

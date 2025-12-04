@@ -32,7 +32,7 @@ export type RemoteSelectProps<P = any> = SelectProps<P, any> & {
   wait?: number;
   /**
    * useRequest() `manual` parameter
-   * @default true
+   * @default false
    */
   manual?: boolean;
   targetField?: any;
@@ -61,7 +61,7 @@ const InternalRemoteSelect = withDynamicSchemaProps(
         value,
         defaultValue,
         objectValue,
-        manual = true,
+        manual = false, // 修改默认值，组件挂载时自动加载数据，提升用户体验
         mapOptions,
         targetField: _targetField,
         CustomDropdownRender,
@@ -179,7 +179,7 @@ const InternalRemoteSelect = withDynamicSchemaProps(
           },
         },
         {
-          manual,
+          manual, // 使用组件的 manual 属性
           debounceWait: wait,
           onSuccess,
           ...(service.defaultParams ? { defaultParams: [service.defaultParams] } : {}),

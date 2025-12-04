@@ -317,6 +317,14 @@ export function getDateVars() {
     thisYear: toUnit('year'),
     lastYear: toUnit('year', -1),
     nextYear: toUnit('year', 1),
+    // 本月第一天
+    thisMonthFirstDay: toUnit('month'),
+    lastMonthFirstDay: toUnit('month', -1),
+    nextMonthFirstDay: toUnit('month', 1),
+    // 本周第一天
+    thisWeekFirstDay: toUnit('isoWeek'),
+    lastWeekFirstDay: toUnit('isoWeek', -1),
+    nextWeekFirstDay: toUnit('isoWeek', 1),
     last7Days: toDays(-7),
     next7Days: toDays(7),
     last30Days: toDays(-30),
