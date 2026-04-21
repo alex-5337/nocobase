@@ -46,7 +46,7 @@ export const dataLoadingMode = defineAction({
     }
 
     // 如果切换到 manual 模式且当前没有活跃的筛选条件，清空数据
-    if (params.mode === 'manual' && !blockModel.hasActiveFilters()) {
+    if (params.mode === 'manual' && !blockModel.hasActiveFilters(resource)) {
       resource.setData([]);
       resource.setMeta({ count: 0, hasNext: false });
       if (typeof resource.setPage === 'function') {

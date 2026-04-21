@@ -84,6 +84,17 @@ export class CollectionBlockModel<T = DefaultStructure> extends DataBlockModel<T
 
     if (forceRefresh) {
       if (this.dirtyRefreshing) return;
+
+      // 检查数据加载模式：manual 模式下如果没有活跃的筛选条件，清空数据但不加载
+      const loadingMode = this.getDataLoadingMode();
+      if (loadingMode === 'manual' && !this.hasActiveFilters(resource)) {
+        resource.setData([]);
+        resource.setMeta({ count: 0, hasNext: false, page: 1 });
+        resource.loading = false;
+        this.lastSeenDirtyVersion = currentVersion;
+        return;
+      }
+
       this.dirtyRefreshing = true;
       void resource
         .refresh()
@@ -101,11 +112,22 @@ export class CollectionBlockModel<T = DefaultStructure> extends DataBlockModel<T
 
     if (this.isManualRefresh) return;
 
+    // Avoid firing multiple refreshes during rapid activate toggles.
+    if (this.dirtyRefreshing) return;
+
+    // 检查数据加载模式：manual 模式下如果没有活跃的筛选条件，清空数据但不加载
+    const loadingMode = this.getDataLoadingMode();
+    if (loadingMode === 'manual' && !this.hasActiveFilters(resource)) {
+      resource.setData([]);
+      resource.setMeta({ count: 0, hasNext: false, page: 1 });
+      resource.loading = false;
+      this.lastSeenDirtyVersion = currentVersion;
+      return;
+    }
+
     const shouldRefresh = this.lastSeenDirtyVersion === null || currentVersion !== this.lastSeenDirtyVersion;
     if (!shouldRefresh) return;
 
-    // Avoid firing multiple refreshes during rapid activate toggles.
-    if (this.dirtyRefreshing) return;
     this.dirtyRefreshing = true;
     void resource
       .refresh()
@@ -671,7 +693,7 @@ CollectionBlockModel.registerFlow({
         const resource = blockModel.resource;
         const isMultiResource = resource instanceof MultiRecordResource;
 
-        if (isMultiResource && loadingMode === 'manual' && !blockModel.hasActiveFilters()) {
+        if (isMultiResource && loadingMode === 'manual' && !blockModel.hasActiveFilters(resource)) {
           // manual 模式且无活跃筛选时，清空数据且不加载
           resource.setData([]);
           resource.setMeta({ count: 0, hasNext: false, page: 1 });

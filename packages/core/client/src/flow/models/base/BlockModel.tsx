@@ -61,16 +61,20 @@ export class BlockModel<T = DefaultStructure> extends FlowModel<T> {
 
   /**
    * 检查是否有任何活跃的筛选来源
+   * @param resource 可选，已获取的 resource 实例，避免通过 getter 重复创建实例
    * @returns boolean
    */
-  hasActiveFilters(): boolean {
-    // 检查 dataScope 是否有筛选
-    const resource = this['resource'] as any;
-    if (resource && resource['filter'] && Object.keys(resource['filter']).length > 0) {
+  hasActiveFilters(resource?: any): boolean {
+    const r = resource || this['resource'];
+
+    if (r?.filterGroups && r.filterGroups.size > 0) {
       return true;
     }
 
-    // 检查所有绑定的筛选器
+    if (r?.filter && Object.keys(r.filter).length > 0) {
+      return true;
+    }
+
     for (const [, active] of this.activeFilterSources) {
       if (active) {
         return true;

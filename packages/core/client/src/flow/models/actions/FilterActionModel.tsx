@@ -227,7 +227,7 @@ FilterActionModel.registerFlow({
 
         // 检查数据加载模式
         const loadingMode = blockModel.getDataLoadingMode();
-        if (loadingMode === 'manual' && !hasFilter && !blockModel.hasActiveFilters()) {
+        if (loadingMode === 'manual' && !hasFilter && !blockModel.hasActiveFilters(resource)) {
           // manual 模式且筛选为空，清空数据
           resource.setData([]);
           resource.setMeta({ count: 0, hasNext: false });
@@ -267,7 +267,7 @@ FilterActionModel.registerFlow({
         const defaultFilter = ctx.model.props.defaultFilterValue;
         const hasDefaultFilter = !isEmptyFilter(transformFilter(defaultFilter));
 
-        if (loadingMode === 'manual' && !hasDefaultFilter && !blockModel.hasActiveFilters()) {
+        if (loadingMode === 'manual' && !hasDefaultFilter && !blockModel.hasActiveFilters(resource)) {
           // manual 模式且无默认筛选值，清空数据
           resource.setData([]);
           resource.setMeta({ count: 0, hasNext: false });

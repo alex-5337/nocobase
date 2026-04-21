@@ -460,7 +460,7 @@ export class FilterManager {
         // 4.4 检查数据加载模式
         const loadingMode = blockModel.getDataLoadingMode();
 
-        if (loadingMode === 'manual' && !blockModel.hasActiveFilters()) {
+        if (loadingMode === 'manual' && !blockModel.hasActiveFilters(resource)) {
           // manual 模式且无活跃筛选时，清空数据
           resource.setData([]);
           resource.setMeta({ count: 0, hasNext: false });
