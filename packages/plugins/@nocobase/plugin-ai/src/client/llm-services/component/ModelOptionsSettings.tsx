@@ -36,7 +36,7 @@ const schema = {
       'x-component': 'InputNumber',
       'x-component-props': {
         min: 1,
-        max: 128000,
+        max: 32768,
         placeholder: '{{t("Leave empty for no limit")}}',
       },
     },

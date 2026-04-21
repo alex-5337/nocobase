@@ -8,7 +8,7 @@
  */
 
 /** 单个字符串字段最大长度 */
-export const MAX_STRING_LENGTH = 500;
+export const MAX_STRING_LENGTH = 10000;
 /** 单次查询最大记录数 */
 export const MAX_QUERY_LIMIT = 100;
 

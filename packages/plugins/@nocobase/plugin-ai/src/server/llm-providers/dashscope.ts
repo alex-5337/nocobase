@@ -65,6 +65,7 @@ export class DashscopeProvider extends LLMProvider {
       configuration: {
         baseURL: baseURL || this.baseURL,
       },
+      maxTokens: this.modelOptions?.maxTokens || 32768,
       verbose: false,
     });
   }
