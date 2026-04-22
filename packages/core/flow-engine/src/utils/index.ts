@@ -84,6 +84,7 @@ export {
   createSafeNavigator,
   createSafeRunJSGlobals,
   runjsWithSafeGlobals,
+  registerRunJSSafeWindowGlobals,
 } from './safeGlobals';
 
 // RunJS value helpers

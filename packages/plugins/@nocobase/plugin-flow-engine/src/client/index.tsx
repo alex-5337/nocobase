@@ -8,12 +8,15 @@
  */
 
 import { Plugin } from '@nocobase/client';
+import { registerRunJSSafeWindowGlobals } from '@nocobase/flow-engine';
 import _ from 'lodash';
 
 export class PluginFlowEngineClient extends Plugin {
   async afterAdd() {}
   async beforeLoad() {}
-  async load() {}
+  async load() {
+    registerRunJSSafeWindowGlobals(['sessionStorage', 'localStorage']);
+  }
 }
 
 export default PluginFlowEngineClient;
