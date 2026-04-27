@@ -61,7 +61,8 @@
     "nwsapi": "2.2.7",
     "antd": "5.24.2",
     "dayjs": "1.11.13",
-    "eslint": "8.57.1"
+    "eslint": "8.57.1",
+    "cytoscape": "3.28.0"
   },
   "config": {
     "ghooks": {

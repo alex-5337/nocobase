@@ -7,64 +7,39 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
-import { ChatDeepSeek } from '@langchain/deepseek';
-import { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
+import { AIMessageChunk } from '@langchain/core/messages';
 import { LLMProvider, ParsedAttachmentResult } from './provider';
 import { LLMProviderMeta, SupportedModel } from '../manager/ai-manager';
 import { Model } from '@nocobase/database';
 import _ from 'lodash';
-import type OpenAI from 'openai';
-import { collectReasoningMap, patchRequestMessagesReasoning, REASONING_MAP_KEY } from './common/reasoning';
+import { ReasoningChatOpenAI, getToolCallsKey, REASONING_MAP_KEY } from './common/reasoning';
 import { Context } from '@nocobase/actions';
 import PluginAIServer from '../plugin';
 import path from 'node:path';
 import { AttachmentModel } from '@nocobase/plugin-file-manager';
 
-class ReasoningDeepSeek extends ChatDeepSeek {
-  async _generate(messages: BaseMessage[], options: any, runManager?: any) {
-    const reasoningMap = collectReasoningMap(messages);
-    const nextOptions = {
-      ...(options || {}),
-      [REASONING_MAP_KEY]: reasoningMap,
-    };
-    return super._generate(messages, nextOptions, runManager);
-  }
-
-  async *_streamResponseChunks(messages: BaseMessage[], options: any, runManager?: any) {
-    const reasoningMap =
-      options?.[REASONING_MAP_KEY] instanceof Map
-        ? (options[REASONING_MAP_KEY] as Map<string, string>)
-        : collectReasoningMap(messages);
-    const nextOptions = {
-      ...(options || {}),
-      [REASONING_MAP_KEY]: reasoningMap,
-    };
-    yield* super._streamResponseChunks(messages, nextOptions, runManager);
-  }
-
-  completionWithRetry(
-    request: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>>;
-  completionWithRetry(
-    request: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<OpenAI.Chat.Completions.ChatCompletion>;
-  async completionWithRetry(
-    request: OpenAI.Chat.ChatCompletionCreateParamsStreaming | OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
-    requestOptions?: OpenAI.RequestOptions,
-  ): Promise<AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk> | OpenAI.Chat.Completions.ChatCompletion> {
+class DeepSeekChatOpenAI extends ReasoningChatOpenAI {
+  async completionWithRetry(request: any, requestOptions?: any): Promise<any> {
     const reasoningMap = requestOptions?.[REASONING_MAP_KEY] as Map<string, string> | undefined;
-    patchRequestMessagesReasoning(request, reasoningMap);
-    if (request.stream) {
-      return super.completionWithRetry(request as OpenAI.Chat.ChatCompletionCreateParamsStreaming, requestOptions);
+    if (Array.isArray(request?.messages)) {
+      for (const m of request.messages) {
+        if (m.role !== 'assistant') continue;
+        if (!m.reasoning_content) {
+          if (Array.isArray(m.tool_calls) && m.tool_calls.length > 0 && reasoningMap?.size) {
+            const key = getToolCallsKey(m.tool_calls);
+            m.reasoning_content = reasoningMap.get(key) || '';
+          } else {
+            m.reasoning_content = '';
+          }
+        }
+      }
     }
-    return super.completionWithRetry(request as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming, requestOptions);
+    return super.completionWithRetry(request, requestOptions);
   }
 }
 
 export class DeepSeekProvider extends LLMProvider {
-  declare chatModel: ChatDeepSeek;
+  declare chatModel: DeepSeekChatOpenAI;
 
   get baseURL() {
     return 'https://api.deepseek.com';
@@ -76,14 +51,13 @@ export class DeepSeekProvider extends LLMProvider {
 
     const modelKwargs: Record<string, any> = {};
 
-    // Only set response_format when responseFormat is explicitly provided
     if (responseFormat) {
       modelKwargs['response_format'] = {
         type: responseFormat,
       };
     }
 
-    return new ReasoningDeepSeek({
+    return new DeepSeekChatOpenAI({
       apiKey,
       ...this.modelOptions,
       modelKwargs,
