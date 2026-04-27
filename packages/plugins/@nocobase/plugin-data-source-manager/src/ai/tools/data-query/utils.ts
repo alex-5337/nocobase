@@ -8,9 +8,9 @@
  */
 
 /** 单个字符串字段最大长度 */
-export const MAX_STRING_LENGTH = 500;
+export const MAX_STRING_LENGTH = 100000;
 /** 单次查询最大记录数 */
-export const MAX_QUERY_LIMIT = 100;
+export const MAX_QUERY_LIMIT = 10000;
 
 export function normalizeLimitOffset(
   args: { limit?: unknown; offset?: unknown },

@@ -1019,8 +1019,10 @@ If information is missing, clearly state it in the summary.</Important>`;
     const workContextHandler = this.plugin.workContextHandler;
     await this.hydrateAttachmentsMeta(messages);
 
+    const MAX_STRING_LENGTH = 100000;
+
     // 截断过长的内容
-    const truncate = (text: string, maxLen = 50000) => {
+    const truncate = (text: string, maxLen = MAX_STRING_LENGTH) => {
       if (!text || text.length <= maxLen) return text;
       return text.slice(0, maxLen) + '\n...[truncated]';
     };
