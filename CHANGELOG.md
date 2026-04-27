@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.44](https://github.com/nocobase/nocobase/compare/v2.0.43...v2.0.44) - 2026-04-26
+
+### 🚀 Improvements
+
+- **[AI employees]** Remove the recommended model in the LLM service configuration ([#9228](https://github.com/nocobase/nocobase/pull/9228)) by @cgyrock
+
+### 🐛 Bug Fixes
+
+- **[client]** relationship field hidden sort switch ([#9220](https://github.com/nocobase/nocobase/pull/9220)) by @jiannx
+
+## [v2.0.43](https://github.com/nocobase/nocobase/compare/v2.0.42...v2.0.43) - 2026-04-24
+
+### 🚀 Improvements
+
+- **[Workflow]** Improve execution list performance ([#9214](https://github.com/nocobase/nocobase/pull/9214)) by @mytharcher
+
+- **[Workflow: Approval]** Add indexes on approval records columns to improve performance on list and submit actions by @mytharcher
+
+### 🐛 Bug Fixes
+
+- **[database]** Fixed an issue where decimal fields with validation could reject valid numeric input ([#9204](https://github.com/nocobase/nocobase/pull/9204)) by @2013xile
+
+- **[Users]** Fixed dynamically configured fields in Edit profile not loading the latest user data ([#9205](https://github.com/nocobase/nocobase/pull/9205)) by @2013xile
+
+- **[AI employees]** Fix the issue of missing URL field values for attachments in AI employee form selections. ([#9216](https://github.com/nocobase/nocobase/pull/9216)) by @cgyrock
+
+- **[Data source manager]** Fixed an issue where grouped sorting on external data source sort fields could not be cleared ([#9203](https://github.com/nocobase/nocobase/pull/9203)) by @2013xile
+
+## [v2.0.42](https://github.com/nocobase/nocobase/compare/v2.0.41...v2.0.42) - 2026-04-23
+
+### 🚀 Improvements
+
+- **[build]** Knowledge base supports batch uploading files via ZIP ([#9206](https://github.com/nocobase/nocobase/pull/9206)) by @cgyrock
+
+- **[AI: Knowledge base]** Knowledge base supports batch uploading files via ZIP by @cgyrock
+
+### 🐛 Bug Fixes
+
+- **[data-source-manager]** Fixed nullable field sync ([#9189](https://github.com/nocobase/nocobase/pull/9189)) by @2013xile
+
+- **[client]** Fixed popup relation blocks and popup record variables using the wrong record identifier when collections use a non-primary unique key ([#9191](https://github.com/nocobase/nocobase/pull/9191)) by @2013xile
+
+- **[AI employees]** Fix issue where AI employees cannot fill relation field values in forms. ([#9182](https://github.com/nocobase/nocobase/pull/9182)) by @cgyrock
+
+- **[Multi-space]** Fixed the error of not finding collection in space permission verification by @jiannx
+
+- **[Workflow: Approval]** Fix approval reassignee search to query users beyond the first 200 candidates by @zhangzhonghe
+
+## [v2.0.41](https://github.com/nocobase/nocobase/compare/v2.0.40...v2.0.41) - 2026-04-22
+
+### 🎉 New Features
+
+- **[Auth: OIDC]** mapping attribute support custom fields by @chenzhizdt
+
+- **[DingTalk]** DingTalk: notifications, in-DingTalk auto login, and user sync. by @chenzhizdt
+
+### 🚀 Improvements
+
+- **[ai]** AI employee and knowledge base now support additional file types for upload (.xlsx, .xls, .csv, .md, .json) ([#9172](https://github.com/nocobase/nocobase/pull/9172)) by @cgyrock
+
+- **[undefined]** Add Arabic translation for guide section and navigation ([#9141](https://github.com/nocobase/nocobase/pull/9141)) by @saraTabbane
+
+### 🐛 Bug Fixes
+
+- **[data-source-manager]** Fix for percentage fields being reset to numeric ​​when resynchronizing external data sources ([#9178](https://github.com/nocobase/nocobase/pull/9178)) by @jiannx
+
+- **[client]**
+  - Fixed the issue where default value will not take effect after creating record. ([#9185](https://github.com/nocobase/nocobase/pull/9185)) by @gchust
+
+  - Fix the issue where the Add tab button is too close to the right edge ([#9177](https://github.com/nocobase/nocobase/pull/9177)) by @zhangzhonghe
+
+- **[Departments]** Fixed an issue where repeated department synchronization could not update department sort order ([#9173](https://github.com/nocobase/nocobase/pull/9173)) by @2013xile
+
+- **[Data source: Main]** Fixed field sync from database for connected views when the collection name differs from the database view name ([#9155](https://github.com/nocobase/nocobase/pull/9155)) by @2013xile
+
+- **[Workflow: JavaScript]** Fix security issue of script executing in `node:vm` mode ([#9084](https://github.com/nocobase/nocobase/pull/9084)) by @mytharcher
+
+- **[AI: Knowledge base]** Fix issue where vector database is not synced when deleting knowledge base documents. by @cgyrock
+
+- **[WeCom]** Fixed missing department order when synchronizing departments from WeCom by @2013xile
+
 ## [v2.0.40](https://github.com/nocobase/nocobase/compare/v2.0.39...v2.0.40) - 2026-04-20
 
 ### 🐛 Bug Fixes
