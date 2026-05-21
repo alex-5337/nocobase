@@ -131,7 +131,7 @@ export const deepseekProviderOptions: LLMProviderMeta = {
   title: 'DeepSeek',
   supportedModel: [SupportedModel.LLM],
   models: {
-    [SupportedModel.LLM]: ['deepseek-chat', 'deepseek-reasoner'],
+    [SupportedModel.LLM]: ['deepseek-v4-pro', 'deepseek-v4-flash'],
   },
   provider: DeepSeekProvider,
 };
