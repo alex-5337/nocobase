@@ -81,6 +81,21 @@ export const ProfileSettings: React.FC<{
               placeholder: t('Greeting message placeholder'),
             },
           },
+          category: {
+            type: 'string',
+            title: '{{t("Category")}}',
+            'x-decorator': 'FormItem',
+            'x-component': 'Radio.Group',
+            'x-component-props': {
+              optionType: 'button',
+              buttonStyle: 'solid',
+            },
+            enum: [
+              { label: '{{t("Business")}}', value: 'business' },
+              { label: '{{t("Developer")}}', value: 'developer' },
+            ],
+            default: 'business',
+          },
         },
       }}
     />
