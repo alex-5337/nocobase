@@ -22,51 +22,52 @@ const { Echarts } = lazy(() => import('./ECharts'), 'Echarts');
 
 export const Markdown: React.FC<{
   message: Message['content'];
-}> = ({ message }) => {
-  const tagIndexes: Record<string, number> = {};
-  const getIndex = (tagName: string): number => {
-    if (!(tagName in tagIndexes)) {
-      tagIndexes[tagName] = -1;
-    }
-    return ++tagIndexes[tagName];
-  };
+}> = React.memo(({ message }) => {
+  const content = React.useMemo(() => {
+    const tagIndexes: Record<string, number> = {};
+    const getIndex = (tagName: string): number => {
+      if (!(tagName in tagIndexes)) {
+        tagIndexes[tagName] = -1;
+      }
+      return ++tagIndexes[tagName];
+    };
 
-  return (
-    <div
-      className={css`
-        margin-bottom: -1em;
-      `}
-    >
-      <ReactMarkdown
-        components={{
-          code: (props) => <Code {...props} message={message} />,
-          form: (props) => <Form {...props} message={message} />,
-          // @ts-ignore
-          echarts: (props) => {
-            return <Echarts {...props} index={getIndex('echarts')} message={message} />;
-          },
-          // collections: (props) => {
-          //   return <Collections {...props} message={message} />;
-          // },
-        }}
-        rehypePlugins={[
-          rehypeRaw,
-          [
-            rehypeSanitize,
-            {
-              ...defaultSchema,
-              tagNames: [...defaultSchema.tagNames, 'echarts', 'form', 'collections'],
-              attributes: {
-                ...defaultSchema.attributes,
-                form: ['uid', 'datasource', 'collection'],
-              },
-            },
-          ],
-        ]}
-        remarkPlugins={[remarkGfm]}
+    return (
+      <div
+        className={css`
+          margin-bottom: -1em;
+        `}
       >
-        {message.content as unknown as string}
-      </ReactMarkdown>
-    </div>
-  );
-};
+        <ReactMarkdown
+          components={{
+            code: (props) => <Code {...props} message={message} />,
+            form: (props) => <Form {...props} message={message} />,
+            // @ts-ignore
+            echarts: (props) => {
+              return <Echarts {...props} index={getIndex('echarts')} message={message} />;
+            },
+          }}
+          rehypePlugins={[
+            rehypeRaw,
+            [
+              rehypeSanitize,
+              {
+                ...defaultSchema,
+                tagNames: [...defaultSchema.tagNames, 'echarts', 'form', 'collections'],
+                attributes: {
+                  ...defaultSchema.attributes,
+                  form: ['uid', 'datasource', 'collection'],
+                },
+              },
+            ],
+          ]}
+          remarkPlugins={[remarkGfm]}
+        >
+          {message.content as unknown as string}
+        </ReactMarkdown>
+      </div>
+    );
+  }, [message.content]);
+
+  return content;
+});

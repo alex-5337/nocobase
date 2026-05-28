@@ -22,11 +22,19 @@ export const CodeInternal: React.FC<{
   value: string;
   height?: string;
   scrollToBottom?: boolean;
-}> = ({ language, value, height, scrollToBottom, ...rest }) => (
-  <CodeHighlight {...rest} language={language} value={value} height={height} scrollToBottom={scrollToBottom} />
-);
+  loading?: boolean;
+}> = React.memo(({ language, value, height, scrollToBottom, loading, ...rest }) => (
+  <CodeHighlight
+    {...rest}
+    language={language}
+    value={value}
+    height={height}
+    scrollToBottom={scrollToBottom}
+    loading={loading}
+  />
+));
 
-export const Code = (props: any) => {
+export const Code = React.memo((props: any) => {
   const ctx = useFlowContext<FlowModelContext>();
   const t = useT();
   const { children, className, node, message, ...rest } = props;
@@ -37,6 +45,7 @@ export const Code = (props: any) => {
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\n$/, '');
   const { message: antdMessage } = App.useApp();
+  const loading = useChatMessagesStore.use.responseLoading();
   const copy = () => {
     navigator.clipboard.writeText(value);
     antdMessage.success(t('Copied'));
@@ -103,14 +112,14 @@ export const Code = (props: any) => {
           : []
       }
     >
-      <CodeInternal {...rest} language={language} value={value} scrollToBottom={!isFullText} />
+      <CodeInternal {...rest} language={language} value={value} scrollToBottom={!isFullText} loading={loading} />
     </Card>
   ) : (
     <Typography.Text code {...rest} className={className}>
       {children}
     </Typography.Text>
   );
-};
+});
 
 const CodeViewExpanded: React.FC<{ language: string; value: string }> = ({ language, value, ...rest }) => {
   const ctx = useFlowViewContext<FlowModelContext>();

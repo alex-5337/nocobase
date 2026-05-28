@@ -23,6 +23,7 @@ import { useChatMessageActions } from './hooks/useChatMessageActions';
 import { useChatBoxStore } from './stores/chat-box';
 import { useChatMessagesStore } from './stores/chat-messages';
 import { useChatBoxActions } from './hooks/useChatBoxActions';
+import { countLines, truncateLines } from '../common/truncate';
 import _ from 'lodash';
 import { useAIConfigRepository } from '../../repositories/hooks/useAIConfigRepository';
 import { observer } from '@nocobase/flow-engine';
@@ -51,6 +52,38 @@ const MessageWrapper = React.forwardRef<
   );
 });
 
+const ReasoningContent: React.FC<{ text: string; streaming: boolean }> = ({ text, streaming }) => {
+  const [expanded, setExpanded] = React.useState(false);
+  const totalLines = React.useMemo(() => countLines(text), [text]);
+  const MAX_REASONING_LINES = 100;
+  const showTruncated = streaming && !expanded && totalLines > MAX_REASONING_LINES;
+  const displayText = React.useMemo(
+    () => (showTruncated ? truncateLines(text, MAX_REASONING_LINES) : text),
+    [text, showTruncated],
+  );
+
+  return (
+    <div>
+      <div
+        className={css`
+          white-space: pre-wrap;
+          color: rgba(0, 0, 0, 0.65);
+          font-size: 12px;
+        `}
+      >
+        {displayText}
+      </div>
+      {showTruncated ? (
+        <div style={{ textAlign: 'center', padding: '4px 0' }}>
+          <Button size="small" type="link" onClick={() => setExpanded(true)}>
+            Show all {totalLines} lines
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const AITextMessageRenderer: React.FC<{
   msg: Message['content'];
   toolInlineActions?: React.ReactNode;
@@ -73,17 +106,7 @@ const AITextMessageRenderer: React.FC<{
           {
             key: 'thinking',
             label: reasoningStatus === 'streaming' ? t('Thinking in progress') : t('Thinking completed'),
-            children: (
-              <div
-                className={css`
-                  white-space: pre-wrap;
-                  color: rgba(0, 0, 0, 0.65);
-                  font-size: 12px;
-                `}
-              >
-                {reasoningText}
-              </div>
-            ),
+            children: <ReasoningContent text={reasoningText} streaming={reasoningStatus === 'streaming'} />,
           },
         ]}
       />

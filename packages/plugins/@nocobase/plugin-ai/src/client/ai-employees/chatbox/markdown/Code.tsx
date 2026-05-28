@@ -22,12 +22,15 @@ const { CodeHighlight } = lazy(() => import('../../common/CodeHighlight'), 'Code
 export const CodeInternal: React.FC<{
   language: string;
   value: string;
-}> = ({ language, value, ...rest }) => <CodeHighlight {...rest} language={language} value={value} />;
+  loading?: boolean;
+}> = React.memo(({ language, value, loading, ...rest }) => (
+  <CodeHighlight {...rest} language={language} value={value} loading={loading} />
+));
 
 export const CodeBasic: React.FC<{
   children?: React.ReactNode;
   className?: string;
-}> = (props: any) => {
+}> = React.memo((props: any) => {
   const { children, className, node, message, ...rest } = props;
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -35,6 +38,7 @@ export const CodeBasic: React.FC<{
   const t = useT();
   const value = String(children).replace(/\n$/, '');
   const { message: antdMessage } = App.useApp();
+  const loading = useChatMessagesStore.use.responseLoading();
   const copy = () => {
     navigator.clipboard.writeText(value);
     antdMessage.success(t('Copied'));
@@ -56,16 +60,16 @@ export const CodeBasic: React.FC<{
       }}
       extra={<Button variant="link" color="default" size="small" onClick={copy} icon={<CopyOutlined />} />}
     >
-      <CodeInternal {...rest} language={language} value={value} />
+      <CodeInternal {...rest} language={language} value={value} loading={loading} />
     </Card>
   ) : (
     <Typography.Text code {...rest} className={className}>
       {children}
     </Typography.Text>
   );
-};
+});
 
-export const Code = (props: any) => {
+export const Code = React.memo((props: any) => {
   const { className } = props;
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -75,4 +79,4 @@ export const Code = (props: any) => {
   const hasEditorRef = !!editorRefMap[currentEditorRefUid];
 
   return hasEditorRef && isSupportLanguage(language) ? <AICoding {...props} /> : <CodeBasic {...props} />;
-};
+});

@@ -16,6 +16,23 @@ import { useChatMessagesStore } from './stores/chat-messages';
 import { useChatMessageActions } from './hooks/useChatMessageActions';
 import { useChatBoxStore } from './stores/chat-box';
 import { useChatToolsStore } from './stores/chat-tools';
+import { Message } from '../types';
+
+const MessageItem = React.memo<{
+  msg: Message;
+  role: Record<string, any>;
+  isFirst: boolean;
+  lastMessageRef: React.Ref<HTMLDivElement>;
+}>(({ msg, role, isFirst, lastMessageRef }) => {
+  if (isFirst && msg.content?.type !== 'greeting') {
+    return (
+      <div ref={lastMessageRef}>
+        <Bubble {...role} loading={msg.loading} content={msg.content} />
+      </div>
+    );
+  }
+  return <Bubble {...role} loading={msg.loading} content={msg.content} />;
+});
 
 export const Messages: React.FC = () => {
   const t = useT();
@@ -72,12 +89,8 @@ export const Messages: React.FC = () => {
             if (!role) {
               return null;
             }
-            return index === 0 && msg.content?.type !== 'greeting' ? (
-              <div key={msg.key} ref={lastMessageRef}>
-                <Bubble {...role} loading={msg.loading} content={msg.content} />
-              </div>
-            ) : (
-              <Bubble {...role} key={msg.key} loading={msg.loading} content={msg.content} />
+            return (
+              <MessageItem key={msg.key} msg={msg} role={role} isFirst={index === 0} lastMessageRef={lastMessageRef} />
             );
           })}
         </div>
