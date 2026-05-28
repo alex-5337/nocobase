@@ -487,9 +487,9 @@ export class FilterFormItemModel extends FilterableItemModel<{
     this.debouncedDoFilter.cancel();
   }
 
-  doFilter() {
+  async doFilter() {
     const filterManager: FilterManager = this.context.filterManager;
-    filterManager.refreshTargetsByFilter(this.uid);
+    await filterManager.refreshTargetsByFilter(this.uid);
   }
 
   doReset() {

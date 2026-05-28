@@ -31,7 +31,11 @@ module.exports = (cli) => {
       const key = fs.readFileSync(filePath, 'utf-8');
       let keyDataStr;
       try {
-        keyDataStr = keyDecrypt(key);
+        if (key.trim().startsWith('{')) {
+          keyDataStr = key;
+        } else {
+          keyDataStr = keyDecrypt(key);
+        }
       } catch (e) {
         console.log('License key decrypt failed', e);
         return;

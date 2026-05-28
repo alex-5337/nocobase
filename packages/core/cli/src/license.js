@@ -25,8 +25,12 @@ exports.getAccessKeyPair = async function () {
   let keyData = {};
   try {
     const str = fs.readFileSync(keyFile, 'utf-8');
-    const keyDataStr = keyDecrypt(str);
-    keyData = JSON.parse(keyDataStr);
+    if (str.trim().startsWith('{')) {
+      keyData = JSON.parse(str);
+    } else {
+      const keyDataStr = keyDecrypt(str);
+      keyData = JSON.parse(keyDataStr);
+    }
   } catch (error) {
     showLicenseInfo(LicenseKeyError.parseFailed);
     throw new Error(LicenseKeyError.parseFailed.title);

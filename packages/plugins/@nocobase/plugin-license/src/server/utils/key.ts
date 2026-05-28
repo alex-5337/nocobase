@@ -73,11 +73,22 @@ export async function saveLicenseKey(licenseKey: string, ctx?: any) {
   }
 }
 
+export function parseKey(key: string): KeyData {
+  try {
+    if (key.trim().startsWith('{')) {
+      return JSON.parse(key);
+    }
+    return JSON.parse(keyDecrypt(key));
+  } catch (e) {
+    throw new Error('invalid');
+  }
+}
+
 export async function getLocalKeyData() {
   const keyFile = path.resolve(process.cwd(), 'storage/.license/license-key');
   try {
     const key = (await fs.promises.readFile(keyFile, 'utf8')).trim();
-    return JSON.parse(keyDecrypt(key));
+    return parseKey(key);
   } catch (e) {
     return null;
   }
@@ -114,7 +125,7 @@ export async function getKey(ctx?: Context): Promise<string> {
 
   let keyData: KeyData;
   try {
-    keyData = JSON.parse(keyDecrypt(key));
+    keyData = parseKey(key);
   } catch (e) {
     logger.error('Failed to parse license key');
     throw new Error('invalid');
@@ -167,14 +178,6 @@ export async function getLicenseStatus(keyData: KeyData): Promise<'active' | 'in
     }
   } catch (e) {
     return 'active';
-  }
-}
-
-export function parseKey(key: string): KeyData {
-  try {
-    return JSON.parse(keyDecrypt(key));
-  } catch (e) {
-    throw new Error('invalid');
   }
 }
 
