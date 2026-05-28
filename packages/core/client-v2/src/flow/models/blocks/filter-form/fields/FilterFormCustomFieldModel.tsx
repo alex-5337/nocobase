@@ -98,12 +98,12 @@ export class FilterFormCustomFieldModel extends FilterFormCustomItemModel {
     this.debouncedDoFilter.cancel();
   }
 
-  doFilter() {
-    this.context.filterManager.refreshTargetsByFilter(this.uid);
+  async doFilter() {
+    await this.context.filterManager.refreshTargetsByFilter(this.uid);
   }
 
-  doReset() {
-    this.context.filterManager.refreshTargetsByFilter(this.uid);
+  async doReset() {
+    await this.context.filterManager.refreshTargetsByFilter(this.uid);
   }
 
   /**

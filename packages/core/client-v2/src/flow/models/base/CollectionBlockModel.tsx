@@ -74,6 +74,20 @@ export class CollectionBlockModel<T = DefaultStructure> extends DataBlockModel<T
 
     if (this.hidden) return;
 
+    // 首次加载或 forceRefresh 时，如果该区块有筛选关联，跳过此次刷新。
+    // 此时筛选表单尚未初始化完毕，筛选值为空。等筛选表单的 applyDefaultsAndInitialFilter
+    // 完成后统一触发带筛选条件的刷新，避免发出无筛选条件的 HTTP 请求。
+    if (this.lastSeenDirtyVersion === null || forceRefresh) {
+      const filterManager: FilterManager = this.context.filterManager;
+      if (filterManager) {
+        const configs = filterManager.getFilterConfigs();
+        const hasFilterOnThis = configs?.some((c) => c.targetId === this.uid);
+        if (hasFilterOnThis) {
+          return;
+        }
+      }
+    }
+
     const resource = this.context.resource as BaseRecordResource | undefined;
     if (!resource) return;
 
@@ -107,6 +121,12 @@ export class CollectionBlockModel<T = DefaultStructure> extends DataBlockModel<T
     // Avoid firing multiple refreshes during rapid activate toggles.
     if (this.dirtyRefreshing) return;
     this.dirtyRefreshing = true;
+
+    const filterManager: FilterManager = this.context.filterManager;
+    if (filterManager) {
+      filterManager.bindToTarget(this.uid);
+    }
+
     void resource
       .refresh()
       .then(() => {
