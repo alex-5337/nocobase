@@ -194,10 +194,12 @@ export function useCodeRunner(hostCtx: FlowModelContext, version = 'v1') {
         const preferFlowKeys = ['jsSettings', 'clickSettings'] as const;
         const availableKey = preferFlowKeys.find((k) => runtimeModel.getFlow(k));
         const flowKey = availableKey || 'jsSettings';
-        const [preparedWithTemplates, preparedWithoutTemplates] = await Promise.all([
-          prepareRunJsCode(code, { preprocessTemplates: true }).catch(() => undefined),
-          prepareRunJsCode(code, { preprocessTemplates: false }).catch(() => undefined),
-        ]);
+        // 只编译当前版本需要的那个准备结果，避免并行编译两遍
+        const shouldPreprocess = version !== 'v2';
+        const preparedCode = await prepareRunJsCode(code, { preprocessTemplates: shouldPreprocess }).catch(
+          () => undefined,
+        );
+        const previewCodeSet = new Set([code, preparedCode].filter(Boolean));
 
         // Monkey-patch JSRunner.run to inject captureConsole into globals for all runjs calls during preview
         type JSRunnerPrototype = { run: JSRunner['run'] };
@@ -215,12 +217,7 @@ export function useCodeRunner(hostCtx: FlowModelContext, version = 'v1') {
         };
         cancelActiveCaptureRef.current = restore;
         proto.run = async function patchedRun(this: { globals?: Record<string, any> }, jsCode: string) {
-          // Be tolerant to flows that run:
-          // - raw source
-          // - prepared code with preprocessTemplates=true (v1-compatible)
-          // - prepared code with preprocessTemplates=false (v2-compatible)
-          const isPreviewCode =
-            jsCode === code || jsCode === preparedWithTemplates || jsCode === preparedWithoutTemplates;
+          const isPreviewCode = previewCodeSet.has(jsCode);
           const prevConsole = this?.globals?.console;
           const prevLoggerDescriptor = this?.globals?.ctx
             ? Object.getOwnPropertyDescriptor(this.globals.ctx, 'logger')
