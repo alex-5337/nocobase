@@ -52,11 +52,11 @@ const MessageWrapper = React.forwardRef<
   );
 });
 
-const ReasoningContent: React.FC<{ text: string; streaming: boolean }> = ({ text, streaming }) => {
+const ReasoningContent: React.FC<{ text: string }> = ({ text }) => {
   const [expanded, setExpanded] = React.useState(false);
   const totalLines = React.useMemo(() => countLines(text), [text]);
   const MAX_REASONING_LINES = 100;
-  const showTruncated = streaming && !expanded && totalLines > MAX_REASONING_LINES;
+  const showTruncated = !expanded && totalLines > MAX_REASONING_LINES;
   const displayText = React.useMemo(
     () => (showTruncated ? truncateLines(text, MAX_REASONING_LINES) : text),
     [text, showTruncated],
@@ -106,7 +106,7 @@ const AITextMessageRenderer: React.FC<{
           {
             key: 'thinking',
             label: reasoningStatus === 'streaming' ? t('Thinking in progress') : t('Thinking completed'),
-            children: <ReasoningContent text={reasoningText} streaming={reasoningStatus === 'streaming'} />,
+            children: <ReasoningContent text={reasoningText} />,
           },
         ]}
       />
