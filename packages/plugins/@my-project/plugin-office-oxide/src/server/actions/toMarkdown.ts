@@ -8,9 +8,8 @@
  */
 
 import fs from 'fs';
-import { Document, type DocumentFormat } from 'office-oxide';
-import { fixMergedCells } from '../utils/xlsx-merge-fix';
 import { getExt, resolveFilePath, pkgName } from '../utils/file-utils';
+import { dispatchConvert } from '../utils/dispatch';
 
 export async function toMarkdownAction(ctx: any, next: any) {
   const resolved = resolveFilePath(ctx);
@@ -19,19 +18,10 @@ export async function toMarkdownAction(ctx: any, next: any) {
   }
 
   const { filePath, filename, isTemp } = resolved;
+  const ext = getExt(filename);
 
   try {
-    const buffer = fs.readFileSync(filePath);
-    const format = getExt(filename).slice(1) as DocumentFormat;
-    const doc = Document.fromBytes(new Uint8Array(buffer), format);
-    let result = doc.toMarkdown();
-    doc.close();
-
-    const ext = getExt(filename);
-    if (ext === '.xlsx' || ext === '.xls') {
-      result = fixMergedCells(result);
-    }
-
+    const result = await dispatchConvert(filePath, ext, 'markdown');
     ctx.body = { markdown: result };
     await next();
   } catch (err: any) {

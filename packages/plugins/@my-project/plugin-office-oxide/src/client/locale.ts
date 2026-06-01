@@ -7,15 +7,14 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
-import { tExpr as _tExpr, useFlowEngine } from '@nocobase/flow-engine';
+import { useMemo } from 'react';
 // @ts-ignore
-import pkg from './../../package.json';
+import pkg from '../../package.json';
+import { useApp } from '@nocobase/client';
 
-export function useT() {
-  const engine = useFlowEngine();
-  return (str: string) => engine.context.t(str, { ns: [pkg.name, 'client'] });
-}
+export const namespace = pkg.name;
 
-export function tExpr(key: string) {
-  return _tExpr(key, { ns: [pkg.name, 'client'] });
+export function useT(): (str: string) => string {
+  const app = useApp();
+  return useMemo(() => (str: string) => app.i18n.t(str, { ns: namespace }), [app.i18n]);
 }

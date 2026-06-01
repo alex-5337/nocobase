@@ -10,12 +10,19 @@
 import { Plugin } from '@nocobase/server';
 import { toMarkdownAction } from './actions/toMarkdown';
 import { toHtmlAction } from './actions/toHtml';
+import { getMineruTokenAction, setMineruTokenAction } from './actions/token';
 import { multipartMiddleware } from './utils/file-utils';
+import { loadToken } from './utils/token-store';
 
 export class PluginOfficeOxideServer extends Plugin {
   async afterAdd() {}
 
-  async beforeLoad() {}
+  async beforeLoad() {
+    const token = loadToken();
+    if (token) {
+      process.env.MINERU_TOKEN = token;
+    }
+  }
 
   async load() {
     this.app.resourceManager.define({
@@ -23,6 +30,8 @@ export class PluginOfficeOxideServer extends Plugin {
       actions: {
         toMarkdown: toMarkdownAction,
         toHtml: toHtmlAction,
+        getMineruToken: getMineruTokenAction,
+        setMineruToken: setMineruTokenAction,
       },
     });
 

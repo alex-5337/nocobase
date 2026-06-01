@@ -8,11 +8,31 @@
  */
 
 import { Plugin } from '@nocobase/client';
+import { tval } from '@nocobase/utils/client';
 import models from './models';
+import { MinerUTokenPane } from './MinerUTokenPane';
+// @ts-ignore
+import pkg from '../../package.json';
+// @ts-ignore
+import zhCN from '../locale/zh-CN.json';
+// @ts-ignore
+import enUS from '../locale/en-US.json';
+
+const namespace = pkg.name;
 
 export class PluginOfficeOxideClient extends Plugin {
   async load() {
     this.flowEngine.registerModels(models);
+
+    this.app.i18n.addResources('zh-CN', namespace, zhCN);
+    this.app.i18n.addResources('en-US', namespace, enUS);
+
+    this.app.pluginSettingsManager.add(`ai.ocr`, {
+      icon: 'ScanOutlined',
+      title: tval('MinerU OCR Settings', { ns: namespace }),
+      aclSnippet: 'pm.ai.ocr',
+      Component: MinerUTokenPane,
+    });
   }
 }
 
