@@ -22913,6 +22913,13 @@ min-indent@^1.0.0, min-indent@^1.0.1:
   resolved "https://registry.npmmirror.com/min-indent/-/min-indent-1.0.1.tgz#a63f681673b30571fbe8bc25686ae746eefa9869"
   integrity sha512-I9jwMn07Sy/IwOj3zVkVik2JTvgpaykDZEigL6Rx6N9LbMywwUSMtxET+7lVoDLLd3O3IXwJwvuuns8UB/HeAg==
 
+mineru-open-sdk@^0.2.5:
+  version "0.2.5"
+  resolved "https://registry.npmmirror.com/mineru-open-sdk/-/mineru-open-sdk-0.2.5.tgz#02f2a07ed604495d3c07e237da63fe3f62d4f6eb"
+  integrity sha512-Y35+HYf7Z/25uTl0wzeJaGsRdGRVAZLf2frG/OhyP/q8jt8F7/4/SVLzTh8uo2kEqW9hosQ+MZbercaUGUxAAA==
+  dependencies:
+    fflate "^0.8.2"
+
 minimalistic-assert@^1.0.0, minimalistic-assert@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmmirror.com/minimalistic-assert/-/minimalistic-assert-1.0.1.tgz#2e194de044626d4a10e7f7fbc00ce73e83e4d5c7"
@@ -24020,7 +24027,7 @@ obuf@^1.0.0, obuf@^1.1.2:
   resolved "https://registry.npmmirror.com/obuf/-/obuf-1.1.2.tgz#09bea3343d41859ebd446292d11c9d4db619084e"
   integrity sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==
 
-office-oxide@^0.1.1:
+office-oxide@^0.1.2:
   version "0.1.2"
   resolved "https://registry.npmmirror.com/office-oxide/-/office-oxide-0.1.2.tgz#c63c5a6296db549923908be1e3de777d94836d0f"
   integrity sha512-mOLpCI5P2mmyHbOa/nZo5wu7w8MQVNqeRn7aW6HdIdRMsmhMJnwJ/DgVmVrQcvV3KqXsMMr9XgW4QUHTM9WgiQ==
@@ -24888,6 +24895,11 @@ pbkdf2@^3.0.3:
     ripemd160 "^2.0.1"
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
+
+pdf-oxide@^0.3.38:
+  version "0.3.38"
+  resolved "https://registry.npmmirror.com/pdf-oxide/-/pdf-oxide-0.3.38.tgz#a6792d2d273526d9b6ce8ffb34a6a96d6c9b7abc"
+  integrity sha512-l0xqv7gB7KSTGR9NBxrleqqsHKMt4oZRmg6zUy561XS5u1mejD8Qe+OY0DUGZ+2O+jC8fW9bJX+4GPpvKRlOGg==
 
 pdf-parse@^1.1.1:
   version "1.1.4"

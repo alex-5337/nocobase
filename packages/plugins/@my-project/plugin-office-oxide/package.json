@@ -12,7 +12,9 @@
   "author": "my-project",
   "license": "MIT",
   "dependencies": {
-    "office-oxide": "^0.1.2"
+    "mineru-open-sdk": "^0.2.5",
+    "office-oxide": "^0.1.2",
+    "pdf-oxide": "^0.3.38"
   },
   "peerDependencies": {
     "@nocobase/client": "2.x",

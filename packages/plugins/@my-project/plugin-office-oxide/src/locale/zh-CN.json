@@ -1,6 +1,24 @@
 {
-  "Unsupported file format": "不支持的文件格式。支持的格式：DOCX, XLSX, PPTX, DOC, XLS, PPT",
+  "Unsupported file format": "不支持的文件格式，请开启 MinerU 对应类型后重试",
   "Please provide a file (multipart, base64, or server path)": "请通过 multipart 上传、base64 编码或服务器路径提供文件",
   "Conversion failed": "文档转换失败",
-  "No file uploaded": "未上传文件"
+  "No file uploaded": "未上传文件",
+  "Token is required": "请输入 Token",
+  "MinerU OCR Settings": "MinerU OCR 设置",
+  "MinerU API Token": "MinerU API 令牌",
+  "MinerU token description": "MinerU 支持 PDF、Office 文档和图片的高精度识别，支持表格识别、公式解析和 109 种语言。注册后获取免费 API Token 即可使用。",
+  "Get MinerU token": "前往 mineru.net 获取 Token",
+  "Use MinerU for": "使用 MinerU 处理",
+  "MinerU settings hint": "开启后该类型文件将通过 MinerU 云端处理；未开启则使用本地引擎（图片类型必须开启 MinerU 才能解析）。",
+  "PDF documents": "PDF 文档（含扫描件）",
+  "Word documents": "Word 文档 (Doc/Docx)",
+  "Excel spreadsheets": "Excel 表格 (Xls/Xlsx)",
+  "PPT presentations": "PPT 演示 (Ppt/PPTx)",
+  "Images": "图片 (png/jpg/jpeg/jp2/webp/gif/bmp)",
+  "API Token": "API 令牌",
+  "Enter your MinerU API token": "请输入 MinerU API Token",
+  "Save": "保存",
+  "Token saved successfully": "Token 保存成功",
+  "Failed to save token": "Token 保存失败",
+  "Failed to load token": "Token 加载失败"
 }

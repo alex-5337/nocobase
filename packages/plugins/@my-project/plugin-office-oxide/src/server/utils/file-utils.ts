@@ -12,7 +12,56 @@ import path from 'path';
 import os from 'os';
 import { koaMulter as multer } from '@nocobase/utils';
 
-const ALLOWED_EXTENSIONS = ['.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt'];
+const ALLOWED_EXTENSIONS = [
+  '.pdf',
+  '.docx',
+  '.doc',
+  '.xlsx',
+  '.xls',
+  '.pptx',
+  '.ppt',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.jp2',
+  '.webp',
+  '.gif',
+  '.bmp',
+];
+
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.jp2', '.webp', '.gif', '.bmp']);
+const OFFICE_EXTENSIONS = new Set(['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt']);
+
+function isImageExt(ext: string): boolean {
+  return IMAGE_EXTENSIONS.has(ext);
+}
+
+function isOfficeExt(ext: string): boolean {
+  return OFFICE_EXTENSIONS.has(ext);
+}
+
+const MINERU_CATEGORIES = ['pdf', 'word', 'excel', 'ppt', 'image'] as const;
+type MineruCategory = (typeof MINERU_CATEGORIES)[number];
+
+const EXT_TO_CATEGORY: Record<string, MineruCategory> = {
+  '.pdf': 'pdf',
+  '.docx': 'word',
+  '.doc': 'word',
+  '.xlsx': 'excel',
+  '.xls': 'excel',
+  '.pptx': 'ppt',
+  '.ppt': 'ppt',
+  '.png': 'image',
+  '.jpg': 'image',
+  '.jpeg': 'image',
+  '.jp2': 'image',
+  '.webp': 'image',
+  '.gif': 'image',
+  '.bmp': 'image',
+};
+
+export { ALLOWED_EXTENSIONS, MINERU_CATEGORIES, EXT_TO_CATEGORY, isImageExt, isOfficeExt };
+export type { MineruCategory };
 
 export function getExt(filename: string): string {
   return path.extname(filename).toLowerCase();
@@ -49,60 +98,69 @@ export async function multipartMiddleware(ctx: any, next: any) {
     ctx.throw(400, err.message || 'File upload failed');
   }
 
-  const uploadedFile = ctx.file;
-  if (!uploadedFile) {
-    ctx.throw(400, ctx.t('No file uploaded', { ns: pkgName() }));
-  }
-
-  const ext = getExt(uploadedFile.originalname);
-  if (!validateExt(ext)) {
-    try {
-      fs.unlinkSync(uploadedFile.path);
-    } catch {
-      // cleanup failure is non-critical
-    }
-    ctx.throw(400, ctx.t('Unsupported file format', { ns: pkgName() }));
-  }
-
-  ctx.uploadedFilePath = uploadedFile.path;
-  ctx.uploadedFilename = uploadedFile.originalname;
-
   await next();
-
-  if (ctx.uploadedFilePath) {
-    try {
-      fs.unlinkSync(ctx.uploadedFilePath);
-    } catch {
-      // cleanup failure is non-critical
-    }
-  }
 }
 
-export function resolveFilePath(ctx: any): { filePath: string; filename: string; isTemp: boolean } | null {
-  if (ctx.uploadedFilePath) {
-    return { filePath: ctx.uploadedFilePath, filename: ctx.uploadedFilename, isTemp: false };
+export function resolveFilePath(ctx: any) {
+  const file = ctx.file;
+  if (file) {
+    return {
+      filePath: file.path,
+      filename: file.originalname,
+      isTemp: true,
+    };
   }
 
-  const { path: filePath, file, filename } = ctx.action.params.values || {};
+  const params = ctx.action.params.values || {};
 
-  if (filePath) {
-    const ext = getExt(filePath);
-    if (!validateExt(ext)) {
-      ctx.throw(400, ctx.t('Unsupported file format', { ns: pkgName() }));
+  if (params.filePath) {
+    const filePath = params.filePath;
+    if (!fs.existsSync(filePath)) {
+      return null;
     }
-    return { filePath, filename: filePath, isTemp: false };
+    return {
+      filePath,
+      filename: path.basename(filePath),
+      isTemp: false,
+    };
   }
 
-  if (file && filename) {
-    const ext = getExt(filename);
-    if (!validateExt(ext)) {
-      ctx.throw(400, ctx.t('Unsupported file format', { ns: pkgName() }));
+  if (params.base64) {
+    const matches = params.base64.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      return null;
     }
-    const tempPath = getTempPath(filename);
-    const buffer = Buffer.from(file, 'base64');
-    fs.writeFileSync(tempPath, new Uint8Array(buffer));
-    return { filePath: tempPath, filename, isTemp: true };
+    const mime = matches[1];
+    const ext = mimeToExt(mime);
+    const data = new Uint8Array(Buffer.from(matches[2], 'base64'));
+    const filename = `upload-${Date.now()}${ext}`;
+    const filePath = getTempPath(filename);
+    fs.writeFileSync(filePath, data);
+    return {
+      filePath,
+      filename,
+      isTemp: true,
+    };
   }
 
   return null;
+}
+
+function mimeToExt(mime: string): string {
+  const map: Record<string, string> = {
+    'application/pdf': '.pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+    'application/msword': '.doc',
+    'application/vnd.ms-excel': '.xls',
+    'application/vnd.ms-powerpoint': '.ppt',
+    'image/png': '.png',
+    'image/jpeg': '.jpg',
+    'image/jp2': '.jp2',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/bmp': '.bmp',
+  };
+  return map[mime] || '';
 }

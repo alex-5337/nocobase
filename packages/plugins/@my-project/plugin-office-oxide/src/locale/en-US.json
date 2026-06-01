@@ -1,6 +1,24 @@
 {
-  "Unsupported file format": "Unsupported file format. Supported: DOCX, XLSX, PPTX, DOC, XLS, PPT",
+  "Unsupported file format": "Unsupported file format. Please enable MinerU for this file type and try again.",
   "Please provide a file (multipart, base64, or server path)": "Please provide a file via multipart upload, base64 encoding, or server path",
   "Conversion failed": "Document conversion failed",
-  "No file uploaded": "No file uploaded"
+  "No file uploaded": "No file uploaded",
+  "Token is required": "Token is required",
+  "MinerU OCR Settings": "MinerU OCR Settings",
+  "MinerU API Token": "MinerU API Token",
+  "MinerU token description": "MinerU supports high-accuracy parsing for PDF, Office documents, and images with table recognition, formula parsing, and 109-language support. Register for a free API token.",
+  "Get MinerU token": "Get a Token from mineru.net",
+  "Use MinerU for": "Use MinerU for",
+  "MinerU settings hint": "When enabled, this file type will be processed by MinerU cloud. When disabled, the local engine is used (images require MinerU to be enabled).",
+  "PDF documents": "PDF Documents",
+  "Word documents": "Word Documents (Doc/Docx)",
+  "Excel spreadsheets": "Excel Spreadsheets (Xls/Xlsx)",
+  "PPT presentations": "PPT Presentations (Ppt/PPTx)",
+  "Images": "Images (png/jpg/jpeg/jp2/webp/gif/bmp)",
+  "API Token": "API Token",
+  "Enter your MinerU API token": "Enter your MinerU API token",
+  "Save": "Save",
+  "Token saved successfully": "Token saved successfully",
+  "Failed to save token": "Failed to save token",
+  "Failed to load token": "Failed to load token"
 }

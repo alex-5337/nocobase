@@ -8,8 +8,8 @@
  */
 
 import fs from 'fs';
-import { Document, type DocumentFormat } from 'office-oxide';
 import { getExt, resolveFilePath, pkgName } from '../utils/file-utils';
+import { dispatchConvert } from '../utils/dispatch';
 
 export async function toHtmlAction(ctx: any, next: any) {
   const resolved = resolveFilePath(ctx);
@@ -18,14 +18,10 @@ export async function toHtmlAction(ctx: any, next: any) {
   }
 
   const { filePath, filename, isTemp } = resolved;
+  const ext = getExt(filename);
 
   try {
-    const buffer = fs.readFileSync(filePath);
-    const format = getExt(filename).slice(1) as DocumentFormat;
-    const doc = Document.fromBytes(new Uint8Array(buffer), format);
-    const result = doc.toHtml();
-    doc.close();
-
+    const result = await dispatchConvert(filePath, ext, 'html');
     ctx.body = { html: result };
     await next();
   } catch (err: any) {
