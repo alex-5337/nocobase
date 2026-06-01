@@ -20683,6 +20683,11 @@ koa@^2.15.4:
     type-is "^1.6.16"
     vary "^1.1.2"
 
+koffi@^2.9.0:
+  version "2.16.2"
+  resolved "https://registry.npmmirror.com/koffi/-/koffi-2.16.2.tgz#9b1420c131f5daa0e561b00687c2222f2e452367"
+  integrity sha512-owU0MRwv6xkrVqCd+33uw6BaYppkTRXbO/rVdJNI2dvZG0gzyRhYwW25eWtc5pauwK8TGh3AbkFONSezdykfSA==
+
 kolorist@^1.6.0:
   version "1.8.0"
   resolved "https://registry.npmmirror.com/kolorist/-/kolorist-1.8.0.tgz#edddbbbc7894bc13302cdf740af6374d4a04743c"
@@ -24014,6 +24019,13 @@ obuf@^1.0.0, obuf@^1.1.2:
   version "1.1.2"
   resolved "https://registry.npmmirror.com/obuf/-/obuf-1.1.2.tgz#09bea3343d41859ebd446292d11c9d4db619084e"
   integrity sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==
+
+office-oxide@^0.1.1:
+  version "0.1.2"
+  resolved "https://registry.npmmirror.com/office-oxide/-/office-oxide-0.1.2.tgz#c63c5a6296db549923908be1e3de777d94836d0f"
+  integrity sha512-mOLpCI5P2mmyHbOa/nZo5wu7w8MQVNqeRn7aW6HdIdRMsmhMJnwJ/DgVmVrQcvV3KqXsMMr9XgW4QUHTM9WgiQ==
+  dependencies:
+    koffi "^2.9.0"
 
 officeparser@^5.2.0:
   version "5.2.2"
