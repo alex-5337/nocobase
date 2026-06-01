@@ -1,0 +1,22 @@
+{
+  "name": "@my-project/plugin-office-oxide",
+  "version": "2.0.58",
+  "main": "dist/server/index.js",
+  "description": "Convert Office documents (DOCX, XLSX, PPTX) to Markdown or HTML using the office-oxide Rust native library, with merged-cell copy strategy for XLSX tables",
+  "description.zh-CN": "基于 office-oxide Rust 原生库将 Office 文档（DOCX、XLSX、PPTX）转换为 Markdown 或 HTML，支持 XLSX 合并单元格复制策略",
+  "description.en-US": "Convert Office documents (DOCX, XLSX, PPTX) to Markdown or HTML using the office-oxide Rust native library, with merged-cell copy strategy for XLSX tables",
+  "displayName": "Office Oxide",
+  "displayName.zh-CN": "Office 文档转换",
+  "displayName.en-US": "Office Oxide",
+  "keywords": ["office", "docx", "xlsx", "pptx", "markdown", "html", "converter"],
+  "author": "my-project",
+  "license": "MIT",
+  "dependencies": {
+    "office-oxide": "^0.1.2"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  }
+}

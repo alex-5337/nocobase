@@ -1,0 +1,6 @@
+{
+  "Unsupported file format": "Unsupported file format. Supported: DOCX, XLSX, PPTX, DOC, XLS, PPT",
+  "Please provide a file (multipart, base64, or server path)": "Please provide a file via multipart upload, base64 encoding, or server path",
+  "Conversion failed": "Document conversion failed",
+  "No file uploaded": "No file uploaded"
+}

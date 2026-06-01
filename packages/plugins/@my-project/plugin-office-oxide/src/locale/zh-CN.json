@@ -1,0 +1,6 @@
+{
+  "Unsupported file format": "不支持的文件格式。支持的格式：DOCX, XLSX, PPTX, DOC, XLS, PPT",
+  "Please provide a file (multipart, base64, or server path)": "请通过 multipart 上传、base64 编码或服务器路径提供文件",
+  "Conversion failed": "文档转换失败",
+  "No file uploaded": "未上传文件"
+}
