@@ -1015,7 +1015,7 @@ If information is missing, clearly state it in the summary.</Important>`;
     const workContextHandler = this.plugin.workContextHandler;
 
     // 截断过长的内容
-    const truncate = (text: string, maxLen = 50000) => {
+    const truncate = (text: string, maxLen = 200000) => {
       if (!text || text.length <= maxLen) return text;
       return text.slice(0, maxLen) + '\n...[truncated]';
     };
