@@ -14,18 +14,29 @@ import { dispatchConvert } from '../utils/dispatch';
 export async function toHtmlAction(ctx: any, next: any) {
   const resolved = resolveFilePath(ctx);
   if (!resolved) {
-    ctx.throw(400, ctx.t('Please provide a file (multipart, base64, or server path)', { ns: pkgName() }));
+    ctx.body = {
+      markdown: '',
+      html: '',
+      error: ctx.t('Please provide a file (multipart, base64, or server path)', { ns: pkgName() }),
+      resultField: 'error',
+    };
+    return next();
   }
 
   const { filePath, filename, isTemp } = resolved;
   const ext = getExt(filename);
 
   try {
-    const result = await dispatchConvert(filePath, ext, 'html');
-    ctx.body = { html: result };
-    await next();
-  } catch (err: any) {
-    ctx.throw(500, err.message || ctx.t('Conversion failed', { ns: pkgName() }));
+    const result = await dispatchConvert(filePath, ext, 'html', ctx);
+    ctx.body = { markdown: '', html: result, error: null, resultField: 'html' };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.body = {
+      markdown: '',
+      html: '',
+      error: message || ctx.t('Conversion failed', { ns: pkgName() }),
+      resultField: 'error',
+    };
   } finally {
     if (isTemp) {
       try {
@@ -35,4 +46,6 @@ export async function toHtmlAction(ctx: any, next: any) {
       }
     }
   }
+
+  await next();
 }

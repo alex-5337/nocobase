@@ -10,38 +10,42 @@
 import fs from 'fs';
 import { MinerU } from 'mineru-open-sdk';
 import { Document, type DocumentFormat } from 'office-oxide';
-import { isMineruEnabledFor, loadToken } from './token-store';
-import { EXT_TO_CATEGORY, isImageExt, isOfficeExt } from './file-utils';
+import { isMineruEnabledFor, loadToken, getOcrConfig, getBaseUrl } from './token-store';
+import { EXT_TO_CATEGORY, isImageExt, pkgName } from './file-utils';
 import { fixMergedCells } from './xlsx-merge-fix';
 
 export async function dispatchConvert(
   filePath: string,
   ext: string,
   outputFormat: 'markdown' | 'html',
+  ctx: any,
 ): Promise<string> {
   const category = EXT_TO_CATEGORY[ext];
   if (!category) {
-    throw new Error('Unsupported file format');
+    throw new Error(ctx.t('Unsupported file format', { ns: pkgName() }));
   }
 
   const useMinerU = isMineruEnabledFor(ext, category) && loadToken();
 
   if (useMinerU) {
-    const client = new MinerU();
-    const result = await client.extract(filePath);
+    const client = new MinerU(loadToken(), getBaseUrl());
+    const ocrConfig = getOcrConfig();
+    const result = await client.extract(filePath, ocrConfig);
     return outputFormat === 'html' ? result.html || `<pre>${result.markdown}</pre>` : result.markdown || '';
   }
 
   if (isImageExt(ext)) {
-    throw new Error('Unsupported file format, please enable MinerU for images and try again');
+    throw new Error(ctx.t('Unsupported file format', { ns: pkgName() }));
   }
 
   if (ext === '.pdf') {
     const { PdfDocument } = await import('pdf-oxide');
-    const doc = new PdfDocument(filePath);
+    const doc = PdfDocument.open(filePath);
     try {
-      const text = doc.toMarkdownAll();
-      return outputFormat === 'html' ? `<pre>${text}</pre>` : text;
+      if (outputFormat === 'html') {
+        return doc.toHtmlAll();
+      }
+      return doc.toMarkdownAll();
     } finally {
       doc.close();
     }
