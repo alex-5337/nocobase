@@ -486,7 +486,7 @@ export class Gateway extends EventEmitter {
 
     // Delay SES lockdown until the app has finished starting to avoid breaking late-loaded modules.
     mainApp.once('afterStart', () => {
-      delete (Math as any).sumPrecise;
+      // delete (Math as any).sumPrecise;
       lockdownSes({
         consoleTaming: 'unsafe',
         errorTaming: 'unsafe',

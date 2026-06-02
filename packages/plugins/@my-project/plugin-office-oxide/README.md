@@ -1,6 +1,17 @@
 # @my-project/plugin-office-oxide
 
-基于 [office-oxide](https://github.com/yfedoseev/office_oxide)（Rust 原生库）将 Office 文档（DOCX、XLSX、PPTX 等）转换为 Markdown 或 HTML 的 NocoBase 插件。
+将 Office (DOCX/XLSX/PPTX/DOC/XLS/PPT)、PDF 和图片转换为 Markdown 或 HTML 的 NocoBase 插件。
+
+## 双引擎架构
+
+| 引擎 | 适用格式 | 特点 |
+|------|---------|------|
+| **本地引擎** | Office、PDF | office-oxide + pdf-oxide Rust 原生库，速度快，无需联网 |
+| **MinerU 云端** | 所有格式（含图片） | 云端 OCR + 表格识别 + 公式解析，支持扫描件和纯图片 |
+
+- 本地引擎：Office 文件用 office-oxide，PDF 用 pdf-oxide
+- MinerU：按文件类型分别开关，可混用（如 Office 走本地、PDF 走 MinerU OCR）
+- 图片只能走 MinerU（本地引擎不支持图片）
 
 ## 安装
 
@@ -14,36 +25,42 @@ yarn pm enable @my-project/plugin-office-oxide
 
 ## 支持的格式
 
-| 类型 | 扩展名 |
-|------|--------|
-| Word | `.docx` `.doc` |
-| Excel | `.xlsx` `.xls` |
-| PowerPoint | `.pptx` `.ppt` |
+| 类型 | 扩展名 | 本地引擎 | MinerU |
+|------|--------|:--------:|:------:|
+| PDF | `.pdf` | pdf-oxide | OCR + 表格 + 公式 |
+| Word | `.docx` `.doc` | office-oxide | OCR + 表格 + 公式 |
+| Excel | `.xlsx` `.xls` | office-oxide | OCR + 表格 + 公式 |
+| PowerPoint | `.pptx` `.ppt` | office-oxide | OCR + 表格 + 公式 |
+| 图片 | `.png` `.jpg` `.jpeg` `.jp2` `.webp` `.gif` `.bmp` | — | OCR |
 
 ---
 
-## API 接口列表
+## 设置页面
+
+路径：系统设置 → MinerU OCR Settings
+
+### 可配置项
+
+| 配置 | 说明 | 默认值 |
+|------|------|--------|
+| API 地址 | MinerU 服务地址，本地部署时改为 `http://你的IP:端口` | `https://mineru.net/api/v4` |
+| API 令牌 | MinerU API Token（前往 mineru.net 获取） | — |
+| 使用 MinerU 处理 | 按文件类型（PDF/Word/Excel/PPT/图片）分别开关 | 全关 |
+| OCR 文字识别 | 是否开启 OCR（扫描件和纯图片必须开启） | 开 |
+| 表格识别 | 是否识别文档中的表格结构 | 开 |
+| 公式识别 | 是否识别数学公式（LaTeX） | 关 |
+
+> 各开关有悬停提示（Tooltip），鼠标悬停即可查看详细说明。
+
+---
+
+## API 接口
 
 ### 1. `POST /api/officeOxide:toMarkdown`
 
-将 Office 文件转为 Markdown。XLSX/XLS 文件会自动应用合并单元格复制策略。
+将文件转为 Markdown。
 
 #### 请求方式一：multipart/form-data（推荐）
-
-**请求头：**
-
-```
-Content-Type: multipart/form-data
-Authorization: Bearer <token>
-```
-
-**表单字段：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | File | 是 | 原始文件二进制 |
-
-**curl 示例：**
 
 ```bash
 curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
@@ -51,28 +68,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
   -F "file=@report.xlsx"
 ```
 
-**React 示例：**
-
-```tsx
-import { useAPIClient } from '@nocobase/client';
-
-const api = useAPIClient();
-const formData = new FormData();
-formData.append('file', file);
-
-const res = await api.request({
-  method: 'post',
-  url: 'officeOxide:toMarkdown',
-  data: formData,
-  headers: { 'Content-Type': 'multipart/form-data' },
-});
-
-console.log(res.data?.data?.markdown);
-```
-
 #### 请求方式二：Base64 编码
-
-**请求体（JSON）：**
 
 ```json
 {
@@ -81,23 +77,7 @@ console.log(res.data?.data?.markdown);
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | string | 是 | 文件内容的 base64 编码 |
-| `filename` | string | 是 | 原始文件名（含扩展名，用于判断格式） |
-
-**curl 示例：**
-
-```bash
-curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"file\":\"$(base64 -w0 report.xlsx)\",\"filename\":\"report.xlsx\"}"
-```
-
 #### 请求方式三：服务器文件路径
-
-**请求体（JSON）：**
 
 ```json
 {
@@ -105,46 +85,23 @@ curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `path` | string | 是 | 服务器上的文件绝对路径 |
-
 #### 响应
 
 ```json
 {
   "data": {
-    "markdown": "## Sheet 1\n\n| Name | Age | City |\n|------|-----|------|\n| Alice | 30 | Beijing |"
+    "markdown": "## Sheet 1\n\n| Name | Age |\n|------|-----|\n| Alice | 30 |"
   }
 }
 ```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `data.markdown` | string | 转换后的 Markdown 字符串 |
 
 ---
 
 ### 2. `POST /api/officeOxide:toHtml`
 
-将 Office 文件转为 HTML。
+将文件转为 HTML。
 
 #### 请求方式一：multipart/form-data（推荐）
-
-**请求头：**
-
-```
-Content-Type: multipart/form-data
-Authorization: Bearer <token>
-```
-
-**表单字段：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | File | 是 | 原始文件二进制 |
-
-**curl 示例：**
 
 ```bash
 curl -X POST http://localhost:13000/api/officeOxide:toHtml \
@@ -152,28 +109,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
   -F "file=@report.docx"
 ```
 
-**React 示例：**
-
-```tsx
-import { useAPIClient } from '@nocobase/client';
-
-const api = useAPIClient();
-const formData = new FormData();
-formData.append('file', file);
-
-const res = await api.request({
-  method: 'post',
-  url: 'officeOxide:toHtml',
-  data: formData,
-  headers: { 'Content-Type': 'multipart/form-data' },
-});
-
-console.log(res.data?.data?.html);
-```
-
 #### 请求方式二：Base64 编码
-
-**请求体（JSON）：**
 
 ```json
 {
@@ -182,24 +118,13 @@ console.log(res.data?.data?.html);
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `file` | string | 是 | 文件内容的 base64 编码 |
-| `filename` | string | 是 | 原始文件名（含扩展名，用于判断格式） |
-
 #### 请求方式三：服务器文件路径
-
-**请求体（JSON）：**
 
 ```json
 {
   "path": "/tmp/report.docx"
 }
 ```
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `path` | string | 是 | 服务器上的文件绝对路径 |
 
 #### 响应
 
@@ -211,26 +136,63 @@ console.log(res.data?.data?.html);
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `data.html` | string | 转换后的 HTML 字符串 |
+---
+
+### 3. `POST /api/officeOxide:getMineruToken`
+
+读取 MinerU 配置（仅供设置页面调用）。
+
+#### 响应
+
+```json
+{
+  "data": {
+    "token": "xxx",
+    "baseUrl": "https://mineru.net/api/v4",
+    "mineruCategories": { "pdf": true, "word": false },
+    "ocrConfig": { "ocr": true, "formula": false, "table": true }
+  }
+}
+```
 
 ---
 
-## 合并单元格处理
+### 4. `POST /api/officeOxide:setMineruToken`
 
-XLSX/XLS 表格转 Markdown 时，合并单元格在标准 Markdown 中无法表达。本插件采用**复制策略**：将被合并区域的值复制到所有覆盖的单元格中，确保数据不丢失。
+保存 MinerU 配置（仅供设置页面调用）。可部分更新，只传需要改的字段即可。
 
-> `toHtml` 接口不使用此策略，由浏览器原生的表格渲染自动处理合并单元格。
+#### 请求体
+
+```json
+{
+  "token": "your-api-token",
+  "baseUrl": "https://mineru.net/api/v4",
+  "mineruCategories": { "pdf": true },
+  "ocrConfig": { "ocr": true, "table": true }
+}
+```
+
+---
+
+## 处理策略
+
+| 场景 | 行为 |
+|------|------|
+| MinerU 开关关闭 | 走本地引擎 |
+| MinerU 开关打开且有 Token | 走 MinerU 云端 |
+| 图片类型未开 MinerU | 返回错误提示 |
+| XLSX Markdown 输出 | 自动应用合并单元格复制策略 |
+| MinerU HTML 无结果 | 回退到 `<pre>` 包裹的 Markdown |
 
 ---
 
 ## 依赖说明
 
-本插件依赖 [office-oxide](https://www.npmjs.com/package/office-oxide)，这是一个 Rust 原生库的 Node.js 绑定，通过 [koffi](https://koffi.dev/) 加载 `.node` 原生二进制。因此：
+| 依赖 | 用途 |
+|------|------|
+| [office-oxide](https://npmjs.com/package/office-oxide) | Rust 原生库，本地处理 Office 文档 |
+| [pdf-oxide](https://npmjs.com/package/pdf-oxide) | Rust 原生库，本地处理 PDF |
+| [mineru-open-sdk](https://npmjs.com/package/mineru-open-sdk) | MinerU 云端 API 调用 |
 
-- `office-oxide` 已在构建配置中标记为 `external`，**不会被打包进 `dist/node_modules`**。
-- 部署时需确保 `office-oxide` 作为运行时依赖存在于 `node_modules` 中（`yarn install` 即可）。
-- `office-oxide` 自带 Windows / Linux / macOS 的预编译二进制，无需 `node-gyp`。
-
-相关构建配置见 `packages/core/build/src/buildPlugin.ts` 中的 `external` 列表。
+- `office-oxide` 和 `pdf-oxide` 自带各平台预编译二进制，无需 node-gyp
+- 两者已在构建配置中标记为 `external`，`yarn install` 即可

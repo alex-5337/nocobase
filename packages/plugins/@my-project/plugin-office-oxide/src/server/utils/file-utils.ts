@@ -94,8 +94,10 @@ export async function multipartMiddleware(ctx: any, next: any) {
 
   try {
     await upload(ctx, () => {});
-  } catch (err: any) {
-    ctx.throw(400, err.message || 'File upload failed');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.body = { markdown: '', html: '', error: message || 'File upload failed', resultField: 'error' };
+    return;
   }
 
   await next();
