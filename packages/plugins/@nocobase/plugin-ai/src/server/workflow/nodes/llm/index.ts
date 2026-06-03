@@ -101,22 +101,50 @@ export class LLMInstruction extends Instruction {
         if (isWorkflowTimeoutError(e) || abortHandle.signal.aborted) {
           return;
         }
-        processor.logger.error(`llm invoke failed, ${e.message}`, {
-          node: node.id,
-          stack: e.stack,
-          chatOptions: _.omit(chatOptions, 'messages'),
-        });
-        const pendingJob = await processor.findPendingJob(job.id);
-        if (!pendingJob) {
-          return;
+        const rawMsg = e.message || '';
+        // Detect unsupported content type errors and give a clear diagnostic
+        if (/unexpected item type in content/i.test(rawMsg)) {
+          const contentTypes = new Set<string>();
+          for (const msg of messages) {
+            for (const c of msg.content || []) {
+              contentTypes.add(c.type);
+            }
+          }
+          const model = modelOptions.model || 'this model';
+          const typesList = [...contentTypes].join(', ');
+          processor.logger.error(`llm invoke failed, ${rawMsg}`, {
+            node: node.id,
+            stack: e.stack,
+            chatOptions: _.omit(chatOptions, 'messages'),
+          });
+          const pendingJob = await processor.findPendingJob(job.id);
+          if (pendingJob) {
+            pendingJob.set({
+              status: JOB_STATUS.ERROR,
+              result: `模型 "${model}" 不支持消息内容类型: ${typesList}。请更换为支持该类型内容的模型，或从消息中移除不支持的内容。`,
+            });
+            setImmediate(() => {
+              this.workflow.resume(pendingJob);
+            });
+          }
+        } else {
+          processor.logger.error(`llm invoke failed, ${rawMsg}`, {
+            node: node.id,
+            stack: e.stack,
+            chatOptions: _.omit(chatOptions, 'messages'),
+          });
+          const pendingJob = await processor.findPendingJob(job.id);
+          if (!pendingJob) {
+            return;
+          }
+          pendingJob.set({
+            status: JOB_STATUS.ERROR,
+            result: rawMsg,
+          });
+          setImmediate(() => {
+            this.workflow.resume(pendingJob);
+          });
         }
-        pendingJob.set({
-          status: JOB_STATUS.ERROR,
-          result: e.message,
-        });
-        setImmediate(() => {
-          this.workflow.resume(pendingJob);
-        });
       })
       .finally(() => {
         abortHandle.dispose();

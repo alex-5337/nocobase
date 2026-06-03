@@ -11,7 +11,7 @@ import React from 'react';
 import { SchemaComponent } from '@nocobase/client';
 import { tval } from '@nocobase/utils/client';
 import { namespace, useT } from '../../locale';
-import { Collapse } from 'antd';
+import { Collapse, Switch } from 'antd';
 import { WorkflowVariableRawTextArea } from '@nocobase/plugin-workflow/client';
 import { ModelSelect } from '../components/ModelSelect';
 
@@ -33,10 +33,22 @@ const Options: React.FC = () => {
             forceRender: true,
             children: (
               <SchemaComponent
+                components={{ Switch }}
                 schema={{
                   type: 'void',
                   name: 'qwen',
                   properties: {
+                    thinking: {
+                      title: tval('Enable thinking', { ns: namespace }),
+                      description: tval('Enable thinking description', { ns: namespace }),
+                      type: 'boolean',
+                      'x-decorator': 'FormItem',
+                      'x-decorator-props': {
+                        style: { position: 'static' },
+                      },
+                      'x-component': 'Switch',
+                      default: true,
+                    },
                     frequencyPenalty: {
                       title: tval('Frequency penalty', { ns: namespace }),
                       description: tval('Frequency penalty description', { ns: namespace }),
