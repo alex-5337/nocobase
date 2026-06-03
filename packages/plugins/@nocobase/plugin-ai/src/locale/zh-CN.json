@@ -292,5 +292,7 @@
   "Qwen (Tongyi)": "Qwen（通义千问）",
   "Local models": "本地模型",
   "Thinking in progress": "深度思考中",
-  "Thinking completed": "已完成思考"
+  "Thinking completed": "已完成思考",
+  "Enable thinking": "启用深度思考",
+  "Enable thinking description": "启用后，模型会在生成最终回复前进行思维链推理。关闭后可跳过推理过程，获得更快的响应速度。"
 }

@@ -31,7 +31,7 @@ export class DashscopeProvider extends LLMProvider {
 
   createModel() {
     const { baseURL, apiKey } = this.serviceOptions || {};
-    const { responseFormat, structuredOutput } = this.modelOptions || {};
+    const { responseFormat, structuredOutput, thinking, ...restModelOptions } = this.modelOptions || {};
     const { schema } = structuredOutput || {};
 
     const modelKwargs: Record<string, any> = {};
@@ -50,17 +50,23 @@ export class DashscopeProvider extends LLMProvider {
       modelKwargs['response_format'] = { type: 'text' };
     }
 
-    if (this.modelOptions?.builtIn?.webSearch === true) {
+    if (restModelOptions?.builtIn?.webSearch === true) {
       // enable platform's web search ability
       // ref: https://bailian.console.aliyun.com/?tab=doc#/doc/?type=model&url=2867560
       modelKwargs['enable_search'] = true;
+    }
+
+    // Dashscope uses `enable_thinking` (boolean) to control reasoning,
+    // ref: https://help.aliyun.com/zh/model-studio/deep-thinking
+    if (thinking === false) {
+      modelKwargs['enable_thinking'] = false;
     }
 
     return new ReasoningChatOpenAI({
       apiKey,
       topP: 0.8,
       temperature: 0.7,
-      ...this.modelOptions,
+      ...restModelOptions,
       modelKwargs,
       configuration: {
         baseURL: baseURL || this.baseURL,
@@ -110,10 +116,6 @@ export class DashscopeProvider extends LLMProvider {
   }
 
   protected isApiSupportedAttachment(attachment: AttachmentModel): boolean {
-    // DashScope compatible-mode API (OpenAI format) does not support
-    // ContentBlock.Multimodal.File (type: 'file'). Only image content
-    // blocks are supported. PDF and other non-image files must go
-    // through the document loader instead.
     return attachment.mimetype?.startsWith('image/') ?? false;
   }
 }
