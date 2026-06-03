@@ -7,6 +7,15 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
 import fg from 'fast-glob';
 import path from 'path';
 import ts from 'typescript';
@@ -70,6 +79,7 @@ export const buildDeclaration = async (cwd: string, targetDir: string) => {
 
   const compilerOptions = {
     ...loadCompilerOptions(),
+    noEmit: false,
     declaration: true,
     emitDeclarationOnly: true,
     declarationDir: targetPath,

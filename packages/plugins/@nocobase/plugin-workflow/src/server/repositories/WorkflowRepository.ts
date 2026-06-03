@@ -72,7 +72,7 @@ export default class WorkflowRepository extends Repository {
           },
           { transaction },
         );
-        if (typeof instruction.duplicateConfig === 'function') {
+        if (instruction && typeof instruction.duplicateConfig === 'function') {
           const newConfig = await instruction.duplicateConfig(newNode, { origin: node, transaction });
           await newNode.update({ config: newConfig }, { transaction });
         }

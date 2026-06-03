@@ -25,6 +25,18 @@ type Message = {
 };
 
 async function encodeLocalImage(url: string) {
+  // Decode URL-encoded characters in the path (e.g. %E5%BE%AE -> 微)
+  // so the file system can locate the actual file on disk.
+  url = url
+    .split('/')
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join('/');
   url = path.join(process.cwd(), url);
   const imageData = await fs.promises.readFile(url);
   return `data:image/png;base64,${imageData.toString('base64')}`;
@@ -60,6 +72,9 @@ async function parseMessage(message: Message) {
           });
         }
         if (c.type === 'image_url') {
+          if (!c.image_url?.url) {
+            continue;
+          }
           let urls = c.image_url.url;
           if (!Array.isArray(urls)) {
             urls = [urls];
@@ -85,6 +100,9 @@ async function parseMessage(message: Message) {
           }
         }
         if (c.type === 'image_base64') {
+          if (!c.image_url?.url) {
+            continue;
+          }
           let urls = c.image_url.url;
           if (!Array.isArray(urls)) {
             urls = [urls];
@@ -107,6 +125,9 @@ async function parseMessage(message: Message) {
             });
           }
         }
+      }
+      if (content.length === 0) {
+        throw new Error('No valid content in user message');
       }
       return new HumanMessage({
         content,

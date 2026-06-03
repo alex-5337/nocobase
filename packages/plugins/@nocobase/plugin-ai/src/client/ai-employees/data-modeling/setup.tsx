@@ -7,7 +7,7 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
-import { PluginDataSourceManagerClient } from '@nocobase/plugin-data-source-manager/client';
+import PluginDataSourceManagerClient from '@nocobase/plugin-data-source-manager/client';
 import PluginAIClient from '../..';
 import React, { useMemo, useState } from 'react';
 import { Avatar, Button, Popover } from 'antd';

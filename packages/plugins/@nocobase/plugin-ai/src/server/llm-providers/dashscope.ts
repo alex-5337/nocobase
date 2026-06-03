@@ -110,6 +110,10 @@ export class DashscopeProvider extends LLMProvider {
   }
 
   protected isApiSupportedAttachment(attachment: AttachmentModel): boolean {
+    // DashScope compatible-mode API (OpenAI format) does not support
+    // ContentBlock.Multimodal.File (type: 'file'). Only image content
+    // blocks are supported. PDF and other non-image files must go
+    // through the document loader instead.
     return attachment.mimetype?.startsWith('image/') ?? false;
   }
 }
@@ -135,25 +139,8 @@ export const dashscopeProviderOptions = {
   supportedModel: [SupportedModel.LLM, SupportedModel.EMBEDDING],
   supportWebSearch: true,
   models: {
-    [SupportedModel.LLM]: [
-      'qwen-long',
-      'qwq-plus',
-      'qwen-max',
-      'qwen-plus',
-      'qwen-turbo',
-      'qwen-math-plus',
-      'qwen-math-turbo',
-      'qwen-coder-plus',
-      'qwen-coder-turbo',
-    ],
-    [SupportedModel.EMBEDDING]: [
-      'text-embedding-v4',
-      'text-embedding-v3',
-      'text-embedding-v2',
-      'text-embedding-v1',
-      'text-embedding-async-v2',
-      'text-embedding-async-v1',
-    ],
+    [SupportedModel.LLM]: ['qwen3.7-plus', 'qwen3.6-flash', 'qwen3-vl-plus', 'qwen3-coder-plus', 'qwen-long'],
+    [SupportedModel.EMBEDDING]: ['text-embedding-v4', 'text-embedding-v3'],
   },
   provider: DashscopeProvider,
   embedding: DashscopeEmbeddingProvider,
