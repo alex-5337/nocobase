@@ -200,6 +200,7 @@ const Content: React.FC = observer(() => {
       />
     );
   }
+
   return (
     <SchemaComponent
       components={{ WorkflowVariableRawTextArea }}
