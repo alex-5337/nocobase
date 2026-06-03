@@ -11,10 +11,11 @@ import { SchemaComponent } from '@nocobase/client';
 import React from 'react';
 import { namespace, useT } from '../locale';
 import { tval } from '@nocobase/utils/client';
-import { ArrayCollapse, FormLayout } from '@formily/antd-v5';
+import { FormLayout } from '@formily/antd-v5';
 import { useField, observer } from '@formily/react';
 import { Field } from '@formily/core';
 import { WorkflowVariableInput, WorkflowVariableRawTextArea } from '@nocobase/plugin-workflow/client';
+import { MessagesArrayCollapse } from './MessagesArrayCollapse';
 
 const UserMessage: React.FC = observer(() => {
   const t = useT();
@@ -154,6 +155,7 @@ const Content: React.FC = observer(() => {
       />
     );
   }
+
   return (
     <SchemaComponent
       components={{ WorkflowVariableRawTextArea }}
@@ -177,7 +179,7 @@ export const Messages: React.FC = () => {
 
   return (
     <SchemaComponent
-      components={{ ArrayCollapse, FormLayout, Content }}
+      components={{ ArrayCollapse: MessagesArrayCollapse, FormLayout, Content }}
       schema={{
         type: 'void',
         properties: {
