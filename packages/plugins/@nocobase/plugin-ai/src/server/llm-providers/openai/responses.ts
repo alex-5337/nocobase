@@ -25,7 +25,7 @@ export class OpenAIResponsesProvider extends LLMProvider {
     const { baseURL, apiKey } = this.serviceOptions || {};
     const { responseFormat, structuredOutput } = this.modelOptions || {};
     const { schema } = structuredOutput || {};
-    const responseFormatOptions = {
+    const responseFormatOptions: Record<string, any> = {
       type: responseFormat ?? 'text',
     };
     if (responseFormat === 'json_schema' && schema) {

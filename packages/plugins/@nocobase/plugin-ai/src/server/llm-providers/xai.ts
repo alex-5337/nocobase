@@ -25,7 +25,7 @@ export class XAIProvider extends LLMProvider {
 
     // ChatXAI strips xAI-incompatible OpenAI penalty/logit parameters internally.
 
-    const responseFormatOptions = {
+    const responseFormatOptions: Record<string, any> = {
       type: responseFormat ?? 'text',
     };
     if (responseFormat === 'json_schema' && schema) {

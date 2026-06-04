@@ -81,36 +81,50 @@ export class LLMInstruction extends Instruction {
       })
       .catch((e) => {
         const rawMsg = e.message || '';
-        // Detect unsupported content type errors and give a clear diagnostic
-        if (/unexpected item type in content/i.test(rawMsg)) {
-          const contentTypes = new Set<string>();
-          for (const msg of messages) {
-            for (const c of msg.content || []) {
-              contentTypes.add(c.type);
-            }
+        processor.logger.error(`llm invoke failed, ${rawMsg}`, {
+          node: node.id,
+          stack: e.stack,
+          chatOptions: _.omit(chatOptions, 'messages'),
+        });
+
+        // 配置错误：参数设置问题，用户可自行修正
+        const configErrors: [RegExp, string][] = [
+          [/json_schema/i, `模型不支持 json_schema，请改用 json_object`],
+          [/invalid llm service|llm service.*invalid/i, `LLM 服务无效，请检查配置`],
+        ];
+        for (const [pattern, hint] of configErrors) {
+          if (pattern.test(rawMsg)) {
+            job.set({ status: JOB_STATUS.ERROR, result: `[配置] ${hint}` });
+            return;
           }
-          const model = modelOptions.model || 'this model';
-          const typesList = [...contentTypes].join(', ');
-          processor.logger.error(`llm invoke failed, ${rawMsg}`, {
-            node: node.id,
-            stack: e.stack,
-            chatOptions: _.omit(chatOptions, 'messages'),
-          });
-          job.set({
-            status: JOB_STATUS.ERROR,
-            result: `模型 "${model}" 不支持消息内容类型: ${typesList}。请更换为支持该类型内容的模型，或从消息中移除不支持的内容。`,
-          });
-        } else {
-          processor.logger.error(`llm invoke failed, ${rawMsg}`, {
-            node: node.id,
-            stack: e.stack,
-            chatOptions: _.omit(chatOptions, 'messages'),
-          });
-          job.set({
-            status: JOB_STATUS.ERROR,
-            result: rawMsg,
-          });
         }
+
+        // 模型错误：模型侧返回的异常
+        const modelErrors: [RegExp, string | (() => string)][] = [
+          [
+            /content type/i,
+            () => {
+              const contentTypes = new Set<string>();
+              for (const msg of messages) {
+                for (const c of msg.content || []) {
+                  contentTypes.add(c.type);
+                }
+              }
+              const model = modelOptions.model || 'this model';
+              return `模型 "${model}" 不支持内容类型: ${[...contentTypes].join(', ')}，请更换模型或移除对应内容`;
+            },
+          ],
+        ];
+        for (const [pattern, hintOrFn] of modelErrors) {
+          if (pattern.test(rawMsg)) {
+            const hint = typeof hintOrFn === 'function' ? hintOrFn() : hintOrFn;
+            job.set({ status: JOB_STATUS.ERROR, result: `[模型] ${hint}` });
+            return;
+          }
+        }
+
+        // 兜底：原始错误
+        job.set({ status: JOB_STATUS.ERROR, result: rawMsg });
       })
       .finally(() => {
         setImmediate(() => {
