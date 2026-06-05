@@ -71,7 +71,7 @@ export class DeepSeekProvider extends LLMProvider {
   }
 
   createModel() {
-    const { baseURL, apiKey } = this.serviceOptions || {};
+    const { apiKey } = this.serviceOptions || {};
     const { responseFormat, thinking, ...restModelOptions } = this.modelOptions || {};
 
     const modelKwargs: Record<string, any> = {};
@@ -93,7 +93,7 @@ export class DeepSeekProvider extends LLMProvider {
       ...restModelOptions,
       modelKwargs,
       configuration: {
-        baseURL: baseURL || this.baseURL,
+        baseURL: this.getResolvedBaseURL(),
       },
       verbose: false,
     });

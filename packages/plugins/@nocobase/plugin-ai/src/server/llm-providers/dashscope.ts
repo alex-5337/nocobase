@@ -30,7 +30,7 @@ export class DashscopeProvider extends LLMProvider {
   }
 
   createModel() {
-    const { baseURL, apiKey } = this.serviceOptions || {};
+    const { apiKey } = this.serviceOptions || {};
     const { responseFormat, structuredOutput, thinking, ...restModelOptions } = this.modelOptions || {};
     const { schema } = structuredOutput || {};
 
@@ -69,7 +69,7 @@ export class DashscopeProvider extends LLMProvider {
       ...restModelOptions,
       modelKwargs,
       configuration: {
-        baseURL: baseURL || this.baseURL,
+        baseURL: this.getResolvedBaseURL(),
       },
       verbose: false,
     });
@@ -128,7 +128,7 @@ export class DashscopeEmbeddingProvider extends EmbeddingProvider {
   createEmbedding(): EmbeddingsInterface {
     return new OpenAIEmbeddings({
       configuration: {
-        baseURL: this.baseURL ?? '',
+        baseURL: this.baseURL,
         apiKey: this.apiKey,
       },
       model: this.model,
