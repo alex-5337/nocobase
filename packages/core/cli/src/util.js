@@ -165,12 +165,7 @@ exports.promptForTs = () => {
 };
 
 exports.downloadPro = async () => {
-  // 此处不再判定，由pkgg命令处理
-  // const { NOCOBASE_PKG_USERNAME, NOCOBASE_PKG_PASSWORD } = process.env;
-  // if (!(NOCOBASE_PKG_USERNAME && NOCOBASE_PKG_PASSWORD)) {
-  //   return;
-  // }
-  await exports.run('yarn', ['nocobase', 'pkg', 'download-pro']);
+  // Disabled: skip contacting pkg.nocobase.com
 };
 
 exports.updateJsonFile = async (target, fn) => {
