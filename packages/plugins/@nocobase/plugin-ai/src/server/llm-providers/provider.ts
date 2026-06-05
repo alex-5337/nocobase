@@ -44,11 +44,14 @@ function normalizeBaseURL(baseURL: string): string {
 
 function resolveServiceOptions(serviceOptions: Record<string, any> | undefined, app: Application) {
   const rendered = app.environment.renderJsonTemplate(serviceOptions ?? {});
-  if (rendered?.baseURL != null) {
+  if (rendered?.baseURL) {
     if (typeof rendered.baseURL !== 'string') {
       throw new Error('baseURL must be a string');
     }
     rendered.baseURL = normalizeBaseURL(rendered.baseURL);
+  } else {
+    // Remove empty baseURL so downstream falls back to provider default
+    delete rendered?.baseURL;
   }
   return rendered;
 }
