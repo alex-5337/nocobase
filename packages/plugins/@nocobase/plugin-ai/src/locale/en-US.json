@@ -460,5 +460,9 @@
   "The MCP server uses current user variables and the connection test failed. Do you want to save it anyway?": "The MCP server uses current user variables and the connection test failed. Do you want to save it anyway?",
   "Save anyway": "Save anyway",
   "Enable thinking": "Enable reasoning (thinking)",
-  "Enable thinking description": "When enabled, the model will perform chain-of-thought reasoning before generating the final response. Disable to skip reasoning for faster responses."
+  "Enable thinking description": "When enabled, the model will perform chain-of-thought reasoning before generating the final response. Disable to skip reasoning for faster responses.",
+  "Reasoning effort": "Reasoning effort",
+  "Reasoning effort description": "Controls the depth of reasoning. \"High\" for balanced performance, \"Max\" for best accuracy but slower response and more tokens.",
+  "High": "High",
+  "Max": "Max"
 }

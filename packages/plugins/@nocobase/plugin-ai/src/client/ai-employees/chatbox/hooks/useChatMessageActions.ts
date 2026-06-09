@@ -15,7 +15,7 @@ import { uid } from '@formily/shared';
 import { useLoadMoreObserver } from './useLoadMoreObserver';
 import { useT } from '../../../locale';
 import { useChatConversationsStore } from '../stores/chat-conversations';
-import { useChatBoxStore } from '../stores/chat-box';
+import { ModelRef, useChatBoxStore } from '../stores/chat-box';
 import { flattenMessages, parseWorkContext } from '../utils';
 import { aiDebugLogger } from '../../../debug-logger'; // [AI_DEBUG]
 import { useChatToolCallStore } from '../stores/chat-tool-call';
@@ -32,6 +32,14 @@ type MessagesResponse = {
     cursor?: string;
     hasMore?: boolean;
   };
+};
+
+const getModelWithReasoningEffort = (inputModel?: ModelRef | null): ModelRef | null => {
+  const store = useChatBoxStore.getState();
+  const baseModel = inputModel ?? store.model;
+  if (!baseModel) return null;
+  return { ...baseModel, reasoningEffort: store.reasoningEffort || 'high' };
+};
 };
 
 export const useChatMessageActions = () => {
@@ -644,8 +652,7 @@ export const useChatMessageActions = () => {
     let sessionChat = getSessionChat(targetSessionId);
     sessionChat.setBackgroundWorking(false);
 
-    // Read model from store at call time to avoid stale closure
-    const model = inputModel ?? useChatBoxStore.getState().model;
+    const model = getModelWithReasoningEffort(inputModel);
 
     // [AI_DEBUG] request
     aiDebugLogger.log(
@@ -811,9 +818,9 @@ export const useChatMessageActions = () => {
 
     // Read model from store at call time to avoid stale closure.
     // If not ready yet, resolve it through shared model rules.
-    let model = useChatBoxStore.getState().model;
+    let model = getModelWithReasoningEffort();
     if (!model) {
-      model = await ensureModelFromStore(aiEmployee?.username);
+      model = getModelWithReasoningEffort(await ensureModelFromStore(aiEmployee?.username));
     }
 
     const controller = new AbortController();
@@ -939,9 +946,9 @@ export const useChatMessageActions = () => {
       sessionChat.setResponseLoading(true);
       // Read model from store at call time to avoid stale closure.
       // If not ready yet, resolve it through shared model rules.
-      let model = useChatBoxStore.getState().model;
+      let model = getModelWithReasoningEffort();
       if (!model) {
-        model = await ensureModelFromStore(aiEmployee?.username);
+        model = getModelWithReasoningEffort(await ensureModelFromStore(aiEmployee?.username));
       }
       const controller = new AbortController();
       sessionChat.setAbortController(controller);

@@ -49,6 +49,18 @@ const Options: React.FC = () => {
                       'x-component': 'Switch',
                       default: true,
                     },
+                    reasoningEffort: {
+                      title: tval('Reasoning effort', { ns: namespace }),
+                      description: tval('Reasoning effort description', { ns: namespace }),
+                      type: 'string',
+                      'x-decorator': 'FormItem',
+                      'x-component': 'Select',
+                      enum: [
+                        { label: t('High'), value: 'high' },
+                        { label: t('Max'), value: 'max' },
+                      ],
+                      default: 'high',
+                    },
                     frequencyPenalty: {
                       title: tval('Frequency penalty', { ns: namespace }),
                       description: tval('Frequency penalty description', { ns: namespace }),

@@ -45,6 +45,7 @@ import { sanitizeAdditionalKwargsForToolCalls } from './tool-call-sanitizer';
 export interface ModelRef {
   llmService: string;
   model: string;
+  reasoningEffort?: string;
 }
 
 export interface AIEmployeeOptions {

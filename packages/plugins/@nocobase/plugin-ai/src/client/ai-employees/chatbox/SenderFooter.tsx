@@ -18,6 +18,7 @@ import _ from 'lodash';
 import { SearchSwitch } from './SearchSwitch';
 import { ModelSwitcher } from './ModelSwitcher';
 import { AIEmployeeSwitcher } from './AIEmployeeSwitch';
+import { ReasoningEffortSwitcher } from './ReasoningEffortSwitcher';
 
 export const SenderFooter: React.FC<{
   components: any;
@@ -71,6 +72,7 @@ export const SenderFooter: React.FC<{
         <SearchSwitch disabled={disabled} />
         <AIEmployeeSwitcher disabled={readonly} />
         <ModelSwitcher disabled={disabled} />
+        <ReasoningEffortSwitcher disabled={disabled} />
       </Flex>
       <Flex align="center" gap="middle">
         {loading ? (

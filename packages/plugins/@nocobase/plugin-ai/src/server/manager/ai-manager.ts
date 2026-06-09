@@ -37,6 +37,7 @@ export type LLMModelOptions = {
   llmService: string;
   model: string;
   webSearch?: boolean;
+  reasoningEffort?: string;
 };
 
 export type EnabledLLMModel = {
@@ -157,21 +158,11 @@ export class AIManager {
   }
 
   async getLLMService(options: LLMModelOptions) {
-    const { llmService, model, webSearch } = options ?? {};
+    const { llmService, model, webSearch, reasoningEffort } = options ?? {};
 
     // model is required - it's set by the frontend ModelSwitcher
     if (!llmService || !model) {
       throw new Error('LLM service not configured');
-    }
-
-    // Build model options from model
-    const modelOptions: Record<string, any> = {
-      llmService,
-      model,
-    };
-
-    if (webSearch === true) {
-      modelOptions.builtIn = { webSearch: true };
     }
 
     const service = await this.plugin.db.getRepository('llmServices').findOne({
@@ -182,6 +173,23 @@ export class AIManager {
 
     if (!service) {
       throw new Error('LLM service not found');
+    }
+
+    // Merge stored modelOptions with runtime values.
+    // DB stored values serve as defaults; explicit dialog params override them.
+    const modelOptions: Record<string, any> = {
+      ...(service.modelOptions || {}),
+      llmService,
+      model,
+    };
+
+    // Dialog explicitly passed reasoningEffort overrides DB stored value
+    if (reasoningEffort) {
+      modelOptions.reasoningEffort = reasoningEffort;
+    }
+
+    if (webSearch === true) {
+      modelOptions.builtIn = { webSearch: true };
     }
 
     const providerOptions = this.llmProviders.get(service.provider);
