@@ -72,7 +72,7 @@ export class DeepSeekProvider extends LLMProvider {
 
   createModel() {
     const { apiKey } = this.serviceOptions || {};
-    const { responseFormat, thinking, ...restModelOptions } = this.modelOptions || {};
+    const { responseFormat, thinking, reasoningEffort, ...restModelOptions } = this.modelOptions || {};
 
     const modelKwargs: Record<string, any> = {};
 
@@ -86,6 +86,11 @@ export class DeepSeekProvider extends LLMProvider {
     // Pass thinking: { type: "disabled" } to disable reasoning (CoT)
     if (thinking === false) {
       modelKwargs['thinking'] = { type: 'disabled' };
+    }
+
+    // Pass reasoning_effort to control thinking depth (high/max)
+    if (thinking !== false && reasoningEffort) {
+      modelKwargs['reasoning_effort'] = reasoningEffort;
     }
 
     return new ReasoningDeepSeek({

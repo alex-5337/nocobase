@@ -18,6 +18,7 @@ type RolesType = GetProp<typeof Bubble.List, 'roles'>;
 export interface ModelRef {
   llmService: string;
   model: string;
+  reasoningEffort?: string;
 }
 
 interface ChatBoxState {
@@ -42,8 +43,8 @@ interface ChatBoxState {
   chatBoxRef: React.MutableRefObject<HTMLDivElement> | null;
   senderRef: React.MutableRefObject<GetRef<typeof Sender>> | null;
   showCodeHistory: boolean;
-
   model?: ModelRef | null;
+  reasoningEffort?: string;
 
   // [AI_DEBUG]
   showDebugPanel: boolean;
@@ -71,6 +72,7 @@ interface ChatBoxActions {
   setShowCodeHistory: (show: boolean) => void;
 
   setModel: (model: ModelRef | null) => void;
+  setReasoningEffort: (reasoningEffort: string) => void;
 
   // [AI_DEBUG]
   setShowDebugPanel: (show: boolean) => void;
@@ -100,6 +102,7 @@ const store = create<ChatBoxState & ChatBoxActions>()((set) => ({
   },
   showCodeHistory: false,
   model: null,
+  reasoningEffort: 'high',
   // [AI_DEBUG]
   showDebugPanel: false,
 
@@ -130,6 +133,7 @@ const store = create<ChatBoxState & ChatBoxActions>()((set) => ({
   setSenderRef: (ref) => set({ senderRef: ref }),
   setShowCodeHistory: (show) => set({ showCodeHistory: show }),
   setModel: (model) => set({ model }),
+  setReasoningEffort: (reasoningEffort) => set({ reasoningEffort }),
   // [AI_DEBUG]
   setShowDebugPanel: (show) => set({ showDebugPanel: show }),
 }));

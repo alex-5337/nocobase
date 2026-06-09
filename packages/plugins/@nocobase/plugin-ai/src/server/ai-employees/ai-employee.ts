@@ -36,6 +36,7 @@ import { LLMResult } from '@langchain/core/outputs';
 export interface ModelRef {
   llmService: string;
   model: string;
+  reasoningEffort?: string;
 }
 
 export class AIEmployee {

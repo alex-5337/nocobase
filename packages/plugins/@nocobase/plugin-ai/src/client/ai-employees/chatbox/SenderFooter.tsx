@@ -17,6 +17,7 @@ import _ from 'lodash';
 import { SearchSwitch } from './SearchSwitch';
 import { ModelSwitcher } from './ModelSwitcher';
 import { AIEmployeeSwitcher } from './AIEmployeeSwitch';
+import { ReasoningEffortSwitcher } from './ReasoningEffortSwitcher';
 
 export const SenderFooter: React.FC<{
   components: any;
@@ -65,6 +66,7 @@ export const SenderFooter: React.FC<{
         <SearchSwitch />
         <AIEmployeeSwitcher />
         <ModelSwitcher />
+        <ReasoningEffortSwitcher />
       </Flex>
       <Flex align="center" gap="middle">
         {loading ? (

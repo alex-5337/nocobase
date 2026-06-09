@@ -19,6 +19,7 @@ import PluginAIServer from '../plugin';
 import path from 'node:path';
 import { ReasoningChatOpenAI } from './common/reasoning';
 import { AttachmentModel } from '@nocobase/plugin-file-manager';
+import { serverRequest } from '@nocobase/utils';
 
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
@@ -117,6 +118,57 @@ export class DashscopeProvider extends LLMProvider {
 
   protected isApiSupportedAttachment(attachment: AttachmentModel): boolean {
     return attachment.mimetype?.startsWith('image/') ?? false;
+  }
+
+  async listModels(): Promise<{
+    models?: { id: string }[];
+    code?: number;
+    errMsg?: string;
+  }> {
+    const apiKey = this.serviceOptions?.apiKey;
+
+    // Try 1: OpenAI-compatible /models endpoint
+    if (apiKey) {
+      try {
+        const url = this.buildRequestURL('models');
+        const res = await serverRequest({
+          method: 'GET',
+          url,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        });
+        if (res?.data?.data) {
+          return { models: res.data.data };
+        }
+      } catch {
+        // Fall through to next attempt
+      }
+
+      // Try 2: Dashscope native API to list models
+      try {
+        const res = await serverRequest({
+          method: 'GET',
+          url: 'https://dashscope.aliyuncs.com/api/v1/deployments/models?page_no=1&page_size=200',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+        });
+        const models = res?.data?.output?.models;
+        if (Array.isArray(models) && models.length > 0) {
+          return { models: models.map((m: { model_name: string }) => ({ id: m.model_name })) };
+        }
+      } catch {
+        // Fall through to static list
+      }
+    }
+
+    // Fallback: return static model list
+    const result: { id: string }[] = [];
+    for (const models of Object.values(dashscopeProviderOptions.models)) {
+      result.push(...models.map((id) => ({ id })));
+    }
+    return { models: result };
   }
 }
 

@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 import { useAPIClient, useActionContext, useRequest } from '@nocobase/client';
-import { useForm, useField } from '@formily/react';
+import { useField } from '@formily/react';
 import { AutoComplete, Spin } from 'antd';
 import { Field } from '@formily/core';
 
