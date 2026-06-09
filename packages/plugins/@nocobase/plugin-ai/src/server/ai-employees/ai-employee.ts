@@ -46,6 +46,7 @@ export interface ModelRef {
   llmService: string;
   model: string;
   reasoningEffort?: string;
+  thinking?: boolean;
 }
 
 export interface AIEmployeeOptions {

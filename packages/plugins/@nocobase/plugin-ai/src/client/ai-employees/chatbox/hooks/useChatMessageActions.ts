@@ -38,7 +38,11 @@ const getModelWithReasoningEffort = (inputModel?: ModelRef | null): ModelRef | n
   const store = useChatBoxStore.getState();
   const baseModel = inputModel ?? store.model;
   if (!baseModel) return null;
-  return { ...baseModel, reasoningEffort: store.reasoningEffort || 'high' };
+  const reasoningEffort = store.reasoningEffort;
+  if (!reasoningEffort) {
+    return { ...baseModel, reasoningEffort: undefined, thinking: false };
+  }
+  return { ...baseModel, reasoningEffort };
 };
 };
 

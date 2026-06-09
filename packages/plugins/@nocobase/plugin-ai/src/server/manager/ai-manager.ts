@@ -38,6 +38,7 @@ export type LLMModelOptions = {
   model: string;
   webSearch?: boolean;
   reasoningEffort?: string;
+  thinking?: boolean;
 };
 
 export type EnabledLLMModel = {
@@ -158,7 +159,7 @@ export class AIManager {
   }
 
   async getLLMService(options: LLMModelOptions) {
-    const { llmService, model, webSearch, reasoningEffort } = options ?? {};
+    const { llmService, model, webSearch, reasoningEffort, thinking } = options ?? {};
 
     // model is required - it's set by the frontend ModelSwitcher
     if (!llmService || !model) {
@@ -186,6 +187,11 @@ export class AIManager {
     // Dialog explicitly passed reasoningEffort overrides DB stored value
     if (reasoningEffort) {
       modelOptions.reasoningEffort = reasoningEffort;
+    }
+
+    // Dialog explicitly passed thinking overrides DB stored value
+    if (thinking !== undefined) {
+      modelOptions.thinking = thinking;
     }
 
     if (webSearch === true) {
