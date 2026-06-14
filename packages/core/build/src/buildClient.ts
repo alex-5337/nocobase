@@ -7,6 +7,15 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
 import { createRsbuild } from '@rsbuild/core';
 import type { RsbuildConfig } from '@rsbuild/core';
 import { pluginLess } from '@rsbuild/plugin-less';
@@ -175,6 +184,9 @@ function createClientRsbuildConfig(
 
         config.performance = false;
         config.stats = 'errors-warnings';
+        config.ignoreWarnings = [
+          /Critical dependency: the request of a dependency is an expression/,
+        ];
       },
     },
   };
