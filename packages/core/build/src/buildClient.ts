@@ -184,9 +184,6 @@ function createClientRsbuildConfig(
 
         config.performance = false;
         config.stats = 'errors-warnings';
-        config.ignoreWarnings = [
-          /Critical dependency: the request of a dependency is an expression/,
-        ];
       },
     },
   };
