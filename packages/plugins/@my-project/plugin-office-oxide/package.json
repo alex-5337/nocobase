@@ -8,7 +8,7 @@
   "displayName": "Office Oxide",
   "displayName.zh-CN": "Office 文档转换",
   "displayName.en-US": "Office Oxide",
-  "keywords": ["office", "docx", "xlsx", "pptx", "pdf", "markdown", "html", "ocr", "mineru", "converter"],
+  "keywords": ["AI", "office", "ocr", "mineru"],
   "author": "my-project",
   "license": "MIT",
   "dependencies": {

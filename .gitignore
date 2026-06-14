@@ -43,6 +43,9 @@ vitest.config.mts.timestamp-*
 .claudeignore
 python/
 git-repos.json
+
+# plugin-office-oxide: MinerU API token must never be committed
+packages/plugins/@my-project/plugin-office-oxide/src/token.json
 CLAUDE.local.md
 AGENTS.local.md
 openspec/
