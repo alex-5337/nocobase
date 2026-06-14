@@ -33,8 +33,7 @@ export class DashscopeProvider extends LLMProvider {
   createModel() {
     const { baseURL, apiKey } = this.serviceOptions || {};
     const { responseFormat, structuredOutput, thinking, ...restModelOptions } = this.modelOptions || {};
-    const { schema } = structuredOutput || {};
-    const name = structuredOutput?.name;
+    const { schema, name } = structuredOutput || {};
 
     const modelKwargs: Record<string, any> = {};
 
