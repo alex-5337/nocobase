@@ -16,7 +16,6 @@ import { isSupportLanguage } from '../../built-in/utils';
 import { Code as AICoding } from '../../ai-coding/markdown/Code';
 import { useChat } from '../hooks/useChat';
 import { useChatConversationsStore } from '../stores/chat-conversations';
-import { useChatMessagesStore } from '../stores/chat-messages';
 
 const { CodeHighlight } = lazy(() => import('../../common/CodeHighlight'), 'CodeHighlight');
 
@@ -32,6 +31,8 @@ export const CodeBasic: React.FC<{
   children?: React.ReactNode;
   className?: string;
 }> = React.memo((props: any) => {
+  const currentConversation = useChatConversationsStore.use.currentConversation();
+  const chat = useChat(currentConversation);
   const { children, className, node, message, ...rest } = props;
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -39,7 +40,7 @@ export const CodeBasic: React.FC<{
   const t = useT();
   const value = String(children).replace(/\n$/, '');
   const { message: antdMessage } = App.useApp();
-  const loading = useChatMessagesStore.use.responseLoading();
+  const loading = chat.use.responseLoading();
   const copy = () => {
     navigator.clipboard.writeText(value);
     antdMessage.success(t('Copied'));

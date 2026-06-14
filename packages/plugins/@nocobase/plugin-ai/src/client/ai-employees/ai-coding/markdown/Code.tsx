@@ -14,7 +14,6 @@ import { lazy } from '@nocobase/client';
 import { FlowModelContext, useFlowContext, useFlowViewContext } from '@nocobase/flow-engine';
 import { useChat } from '../../chatbox/hooks/useChat';
 import { useChatConversationsStore } from '../../chatbox/stores/chat-conversations';
-import { useChatMessagesStore } from '../../chatbox/stores/chat-messages';
 import { useT } from '../../../locale';
 
 const { CodeHighlight } = lazy(() => import('../../common/CodeHighlight'), 'CodeHighlight');
@@ -49,7 +48,7 @@ export const Code = React.memo((props: any) => {
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\n$/, '');
   const { message: antdMessage } = App.useApp();
-  const loading = useChatMessagesStore.use.responseLoading();
+  const loading = chat.use.responseLoading();
   const copy = () => {
     navigator.clipboard.writeText(value);
     antdMessage.success(t('Copied'));
