@@ -14,6 +14,7 @@ import { lazy } from '@nocobase/client';
 import { FlowModelContext, useFlowContext, useFlowViewContext } from '@nocobase/flow-engine';
 import { useChat } from '../../chatbox/hooks/useChat';
 import { useChatConversationsStore } from '../../chatbox/stores/chat-conversations';
+import { useChatMessagesStore } from '../../chatbox/stores/chat-messages';
 import { useT } from '../../../locale';
 
 const { CodeHighlight } = lazy(() => import('../../common/CodeHighlight'), 'CodeHighlight');

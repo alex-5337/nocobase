@@ -16,6 +16,7 @@ import { isSupportLanguage } from '../../built-in/utils';
 import { Code as AICoding } from '../../ai-coding/markdown/Code';
 import { useChat } from '../hooks/useChat';
 import { useChatConversationsStore } from '../stores/chat-conversations';
+import { useChatMessagesStore } from '../stores/chat-messages';
 
 const { CodeHighlight } = lazy(() => import('../../common/CodeHighlight'), 'CodeHighlight');
 
