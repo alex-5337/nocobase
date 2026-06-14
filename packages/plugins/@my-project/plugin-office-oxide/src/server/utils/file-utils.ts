@@ -100,6 +100,16 @@ export async function multipartMiddleware(ctx: any, next: any) {
     return;
   }
 
+  // 将 multer 解析出的表单字段合并到 action params.values
+  // koaMulter 把表单字段放在 ctx.request.body 里
+  const formFields = ctx.request?.body;
+  if (formFields && typeof formFields === 'object' && ctx.action) {
+    ctx.action.params.values = {
+      ...(ctx.action.params.values || {}),
+      ...formFields,
+    };
+  }
+
   await next();
 }
 

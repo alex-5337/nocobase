@@ -23344,6 +23344,11 @@ multistream@^4.1.0:
     once "^1.4.0"
     readable-stream "^3.6.0"
 
+mupdf@^0.4.1:
+  version "1.27.0"
+  resolved "https://registry.npmmirror.com/mupdf/-/mupdf-1.27.0.tgz#9a1c7c01e2f5b95694ee89e09ce57940b01304d2"
+  integrity sha512-vEPUYwZeu5NgiFLz4e20R7Vp2pNY7szirGEvTxHyQQpQs6ab4DeGdonwT6sH1JZG5EhyHSrojZrZn2/0ee6qZQ==
+
 mustache@^4.2.0:
   version "4.2.0"
   resolved "https://registry.npmmirror.com/mustache/-/mustache-4.2.0.tgz#e5892324d60a12ec9c2a73359edca52972bf6f64"

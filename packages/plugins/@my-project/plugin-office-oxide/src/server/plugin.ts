@@ -10,6 +10,7 @@
 import { Plugin } from '@nocobase/server';
 import { toMarkdownAction } from './actions/toMarkdown';
 import { toHtmlAction } from './actions/toHtml';
+import { toPngAction } from './actions/toPng';
 import { getMineruTokenAction, setMineruTokenAction } from './actions/token';
 import { multipartMiddleware } from './utils/file-utils';
 import { loadToken } from './utils/token-store';
@@ -30,6 +31,7 @@ export class PluginOfficeOxideServer extends Plugin {
       actions: {
         toMarkdown: toMarkdownAction,
         toHtml: toHtmlAction,
+        toPng: toPngAction,
         getMineruToken: getMineruTokenAction,
         setMineruToken: setMineruTokenAction,
       },
