@@ -19,6 +19,7 @@ type RolesType = GetProp<typeof Bubble.List, 'roles'>;
 export interface ModelRef {
   llmService: string;
   model: string;
+  reasoningEffort?: string;
 }
 
 interface ChatBoxState {
@@ -45,6 +46,7 @@ interface ChatBoxState {
   showCodeHistory: boolean;
 
   model?: ModelRef | null;
+  reasoningEffort?: string;
 
   showDebugPanel: boolean;
   readonly: boolean;
@@ -73,6 +75,7 @@ interface ChatBoxActions {
   setShowCodeHistory: (show: boolean) => void;
 
   setModel: (model: ModelRef | null) => void;
+  setReasoningEffort: (reasoningEffort: string) => void;
 
   setShowDebugPanel: (show: boolean) => void;
   setReadonly: (readonly: boolean) => void;
@@ -104,6 +107,7 @@ const store = getOrCreateGlobalStore('@nocobase/plugin-ai/chat-box-store', () =>
     },
     showCodeHistory: false,
     model: null,
+    reasoningEffort: '',
     showDebugPanel: false,
     readonly: false,
     isShowSenderHint: false,
@@ -135,6 +139,11 @@ const store = getOrCreateGlobalStore('@nocobase/plugin-ai/chat-box-store', () =>
     setSenderRef: (ref) => set({ senderRef: ref }),
     setShowCodeHistory: (show) => set({ showCodeHistory: show }),
     setModel: (model) => set({ model }),
+    setReasoningEffort: (reasoningEffort) =>
+      set((state) => ({
+        reasoningEffort,
+        model: state.model ? { ...state.model, reasoningEffort: reasoningEffort || undefined } : null,
+      })),
     setShowDebugPanel: (show) => set({ showDebugPanel: show }),
     setReadonly: (readonly) => set({ readonly }),
     setShowSenderHint: (isShowSenderHint) => set({ isShowSenderHint }),
