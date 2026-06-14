@@ -67,7 +67,7 @@ const MarkdownComponent: React.FC<{
         </ReactMarkdown>
       </div>
     );
-  }, [message.content]);
+  }, [message]);
 
   return content;
 });
