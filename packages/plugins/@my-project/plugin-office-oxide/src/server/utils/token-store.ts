@@ -36,7 +36,7 @@ function readData(): TokenData {
       const raw = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf-8'));
       return {
         token: raw.token || '',
-        mineruCategories: raw.mineruCategories || {},
+        mineruCategories: raw.mineruCategories ?? { image: true },
         ocrConfig: raw.ocrConfig || defaultOcrConfig(),
         baseUrl: raw.baseUrl || DEFAULT_BASE_URL,
       };
@@ -44,7 +44,7 @@ function readData(): TokenData {
   } catch {
     // ignore
   }
-  return { token: '', mineruCategories: {}, ocrConfig: defaultOcrConfig(), baseUrl: DEFAULT_BASE_URL };
+  return { token: '', mineruCategories: { image: true }, ocrConfig: defaultOcrConfig(), baseUrl: DEFAULT_BASE_URL };
 }
 
 function writeData(data: TokenData): void {
