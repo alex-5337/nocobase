@@ -167,6 +167,28 @@ export const DebugPanel: React.FC = () => {
   const setShowDebugPanel = useChatBoxStore.use.setShowDebugPanel();
   const currentConversation = useChatConversationsStore.use.currentConversation();
 
+  const MAX_UI_LOGS = 300;
+  const MAX_FIELD_CHARS = 2000; // 单字段最大字符数，截断超长字段防止 React state 内存溢出
+
+  // 递归截断超长字符串，保留数据结构不变
+  const truncateLogData = useCallback((data: Record<string, any>, depth = 0): Record<string, any> => {
+    if (depth > 4) return data;
+    const result: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      const val = data[key];
+      if (typeof val === 'string' && val.length > MAX_FIELD_CHARS) {
+        result[key] = val.slice(0, MAX_FIELD_CHARS) + `…[truncated ${val.length - MAX_FIELD_CHARS} chars]`;
+      } else if (Array.isArray(val)) {
+        result[key] = val.slice(0, 100).map((v) => (v && typeof v === 'object' ? truncateLogData(v, depth + 1) : v));
+      } else if (val && typeof val === 'object' && !(val instanceof Date)) {
+        result[key] = truncateLogData(val as Record<string, any>, depth + 1);
+      } else {
+        result[key] = val;
+      }
+    }
+    return result;
+  }, []);
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
@@ -185,7 +207,7 @@ export const DebugPanel: React.FC = () => {
     // Load existing logs for current session
     const session = aiDebugLogger.getSession(currentConversation);
     if (session) {
-      setLogs([...session.logs]);
+      setLogs(session.logs.slice(-MAX_UI_LOGS).map((l) => ({ ...l, data: truncateLogData(l.data) })));
     } else {
       setLogs([]);
     }
@@ -193,7 +215,11 @@ export const DebugPanel: React.FC = () => {
     // Subscribe to new logs
     const unsubscribe = aiDebugLogger.subscribe((log, sessionId) => {
       if (sessionId === currentConversation) {
-        setLogs((prev) => [...prev, log]);
+        const safeLog = { ...log, data: truncateLogData(log.data) };
+        setLogs((prev) => {
+          const next = [...prev, safeLog];
+          return next.length > MAX_UI_LOGS ? next.slice(-MAX_UI_LOGS) : next;
+        });
       }
     });
 

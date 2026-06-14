@@ -138,6 +138,7 @@ async function hasPreviewPopupContext(ctx: any): Promise<boolean> {
 }
 
 export function useCodeRunner(hostCtx: FlowModelContext, version = 'v1') {
+  const MAX_RUN_LOGS = 500; // 单次运行最大日志条数，防止意外日志洪水导致内存溢出
   const [logs, setLogs] = useState<RunLog[]>([]);
   const [running, setRunning] = useState(false);
   const activeRunTokenRef = useRef(0);
@@ -152,6 +153,7 @@ export function useCodeRunner(hostCtx: FlowModelContext, version = 'v1') {
       const runToken = activeRunTokenRef.current;
       cancelActiveCaptureRef.current?.();
       cancelActiveCaptureRef.current = null;
+      const logCountRef = { current: 0 };
       try {
         const model = hostCtx?.model;
         if (!model) throw new Error('No model in FlowContext');
@@ -172,6 +174,10 @@ export function useCodeRunner(hostCtx: FlowModelContext, version = 'v1') {
           error: (...args) => console.error(...args),
         };
         const append = (level: RunLog['level'], args: any[]) => {
+          if (logCountRef.current >= MAX_RUN_LOGS) {
+            return; // 超过日志上限，丢弃后续日志防止内存溢出
+          }
+          logCountRef.current++;
           const msg = args.map((x: any) => safeToString(x)).join(' ');
           // For RunJS deprecation warnings we embed "(line x:y)" in the message (user line numbers).
           // Convert it to raw line numbers (+ wrapper prelude) so the editor jump uses the same contract as errors.

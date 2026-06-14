@@ -164,13 +164,15 @@ export class JSRunner {
       }
     })()`;
 
-    const compartment = new Compartment(this.globals);
+    let compartment: Compartment | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
+      compartment = new Compartment(this.globals);
       const task = compartment.evaluate(wrapped);
-      const timeoutPromise = new Promise((_resolve, reject) =>
-        setTimeout(() => reject(new Error('Execution timed out')), this.timeoutMs),
-      );
+      const timeoutPromise = new Promise((_resolve, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Execution timed out')), this.timeoutMs);
+      });
       const result = await Promise.race([task, timeoutPromise]);
       return { success: true, value: result };
     } catch (err) {
@@ -188,6 +190,13 @@ export class JSRunner {
         error: outErr,
         timeout: (outErr as any)?.message === 'Execution timed out',
       };
+    } finally {
+      // 清理 timeout 避免泄漏
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      // 主动释放 Compartment 引用，帮助 GC 回收 SES 隔离 Realm 占用的内存
+      compartment = undefined;
     }
   }
 }

@@ -193,7 +193,6 @@ export const useChatMessageActions = () => {
             for (const tc of toolCalls) {
               if (tc.willInterrupt) {
                 updateToolCallInvokeStatus(sessionId, msg.content.messageId, tc.id, tc.invokeStatus);
-              }
               if (tc.invokeStatus === 'done' || tc.invokeStatus === 'confirmed') {
                 const contentStr = typeof tc.content === 'string' ? tc.content : JSON.stringify(tc.content);
                 aiDebugLogger.log(sessionId, 'tool_result', {
@@ -618,6 +617,7 @@ export const useChatMessageActions = () => {
         });
       }
 
+      flushContent(); // 出错前先刷出已缓冲内容
       if (error) {
         sessionChat.updateLastMessage((last) => ({
           ...last,

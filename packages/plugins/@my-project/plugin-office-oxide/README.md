@@ -1,6 +1,6 @@
 # @my-project/plugin-office-oxide
 
-将 Office (DOCX/XLSX/PPTX/DOC/XLS/PPT)、PDF 和图片转换为 Markdown 或 HTML 的 NocoBase 插件。
+将 Office (DOCX/XLSX/PPTX/DOC/XLS/PPT)、PDF 和图片转换为 Markdown、HTML 或 PNG 的 NocoBase 插件。
 
 ## 双引擎架构
 
@@ -25,13 +25,13 @@ yarn pm enable @my-project/plugin-office-oxide
 
 ## 支持的格式
 
-| 类型 | 扩展名 | 本地引擎 | MinerU |
-|------|--------|:--------:|:------:|
-| PDF | `.pdf` | pdf-oxide | OCR + 表格 + 公式 |
-| Word | `.docx` `.doc` | office-oxide | OCR + 表格 + 公式 |
-| Excel | `.xlsx` `.xls` | office-oxide | OCR + 表格 + 公式 |
-| PowerPoint | `.pptx` `.ppt` | office-oxide | OCR + 表格 + 公式 |
-| 图片 | `.png` `.jpg` `.jpeg` `.jp2` `.webp` `.gif` `.bmp` | — | OCR |
+| 类型 | 扩展名 | 本地引擎 | MinerU | PNG 渲染 |
+|------|--------|:--------:|:------:|:--------:|
+| PDF | `.pdf` | pdf-oxide | OCR + 表格 + 公式 | mupdf |
+| Word | `.docx` `.doc` | office-oxide | OCR + 表格 + 公式 | — |
+| Excel | `.xlsx` `.xls` | office-oxide | OCR + 表格 + 公式 | — |
+| PowerPoint | `.pptx` `.ppt` | office-oxide | OCR + 表格 + 公式 | — |
+| 图片 | `.png` `.jpg` `.jpeg` `.jp2` `.webp` `.gif` `.bmp` | — | OCR | — |
 
 ---
 
@@ -45,7 +45,7 @@ yarn pm enable @my-project/plugin-office-oxide
 |------|------|--------|
 | API 地址 | MinerU 服务地址，本地部署时改为 `http://你的IP:端口` | `https://mineru.net/api/v4` |
 | API 令牌 | MinerU API Token（前往 mineru.net 获取） | — |
-| 使用 MinerU 处理 | 按文件类型（PDF/Word/Excel/PPT/图片）分别开关 | 全关 |
+| 使用 MinerU 处理 | 按文件类型（PDF/Word/Excel/PPT/图片）分别开关 | 仅图片开启 |
 | OCR 文字识别 | 是否开启 OCR（扫描件和纯图片必须开启） | 开 |
 | 表格识别 | 是否识别文档中的表格结构 | 开 |
 | 公式识别 | 是否识别数学公式（LaTeX） | 关 |
@@ -72,7 +72,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
 
 ```json
 {
-  "file": "<base64>",
+  "base64": "<base64>",
   "filename": "report.xlsx"
 }
 ```
@@ -81,7 +81,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
 
 ```json
 {
-  "path": "/tmp/report.docx"
+  "filePath": "/tmp/report.docx"
 }
 ```
 
@@ -90,10 +90,15 @@ curl -X POST http://localhost:13000/api/officeOxide:toMarkdown \
 ```json
 {
   "data": {
-    "markdown": "## Sheet 1\n\n| Name | Age |\n|------|-----|\n| Alice | 30 |"
+    "markdown": "## Sheet 1\n\n| Name | Age |\n|------|-----|\n| Alice | 30 |",
+    "html": "",
+    "error": null,
+    "resultField": "markdown"
   }
 }
 ```
+
+> 所有转换接口返回统一结构，通过 `resultField` 指示有效结果字段。`"markdown"` / `"html"` / `"images"` 表示成功，`"error"` 表示失败，此时 `error` 字段包含错误信息。
 
 ---
 
@@ -113,7 +118,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 
 ```json
 {
-  "file": "<base64>",
+  "base64": "<base64>",
   "filename": "report.docx"
 }
 ```
@@ -122,7 +127,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 
 ```json
 {
-  "path": "/tmp/report.docx"
+  "filePath": "/tmp/report.docx"
 }
 ```
 
@@ -131,14 +136,86 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 ```json
 {
   "data": {
-    "html": "<h2>Sheet 1</h2>\n<table>...</table>"
+    "markdown": "",
+    "html": "<h2>Sheet 1</h2>\n<table>...</table>",
+    "error": null,
+    "resultField": "html"
   }
 }
 ```
 
 ---
 
-### 3. `POST /api/officeOxide:getMineruToken`
+### 3. `POST /api/officeOxide:toPng`
+
+将 PDF 渲染为 PNG 图片（Base64 编码返回）。
+
+#### 请求方式一：multipart/form-data（推荐）
+
+```bash
+curl -X POST http://localhost:13000/api/officeOxide:toPng \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@report.pdf" \
+  -F "scale=2" \
+  -F "pages=1-3"
+```
+
+#### 请求方式二：Base64 编码
+
+```json
+{
+  "base64": "<base64>",
+  "filename": "report.pdf",
+  "scale": 2,
+  "pages": "1-3"
+}
+```
+
+#### 请求方式三：服务器文件路径
+
+```json
+{
+  "filePath": "/tmp/report.pdf",
+  "scale": 2,
+  "pages": "all"
+}
+```
+
+#### 参数说明
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:----:|--------|------|
+| `scale` | number | 否 | `2` | 缩放比例，必须 > 0 |
+| `pages` | string / number / number[] | 否 | `all` | 页码范围：`"all"` 全部、`3` 单页、`"1-5"` 范围、`"1,3,5"` 逗号分隔、`[1,2,3]` 数组 |
+
+#### 响应
+
+```json
+{
+  "data": {
+    "images": [
+      {
+        "page": 1,
+        "data": "iVBORw0KGgo...",
+        "format": "png",
+        "width": 2480,
+        "height": 3508
+      }
+    ],
+    "filenames": ["report-page1.png"],
+    "pageCount": 3,
+    "renderedPages": 1,
+    "error": null,
+    "resultField": "images"
+  }
+}
+```
+
+> 仅支持 PDF 文件，其他格式返回错误。
+
+---
+
+### 4. `POST /api/officeOxide:getMineruToken`
 
 读取 MinerU 配置（仅供设置页面调用）。
 
@@ -157,7 +234,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 
 ---
 
-### 4. `POST /api/officeOxide:setMineruToken`
+### 5. `POST /api/officeOxide:setMineruToken`
 
 保存 MinerU 配置（仅供设置页面调用）。可部分更新，只传需要改的字段即可。
 
@@ -183,6 +260,7 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 | 图片类型未开 MinerU | 返回错误提示 |
 | XLSX Markdown 输出 | 自动应用合并单元格复制策略 |
 | MinerU HTML 无结果 | 回退到 `<pre>` 包裹的 Markdown |
+| PDF 转 PNG | 使用 mupdf 渲染，支持指定缩放和页码范围 |
 
 ---
 
@@ -192,7 +270,8 @@ curl -X POST http://localhost:13000/api/officeOxide:toHtml \
 |------|------|
 | [office-oxide](https://npmjs.com/package/office-oxide) | Rust 原生库，本地处理 Office 文档 |
 | [pdf-oxide](https://npmjs.com/package/pdf-oxide) | Rust 原生库，本地处理 PDF |
+| [mupdf](https://npmjs.com/package/mupdf) | 基于 MuPDF 的 PDF 渲染引擎，PDF 转 PNG |
 | [mineru-open-sdk](https://npmjs.com/package/mineru-open-sdk) | MinerU 云端 API 调用 |
 
-- `office-oxide` 和 `pdf-oxide` 自带各平台预编译二进制，无需 node-gyp
-- 两者已在构建配置中标记为 `external`，`yarn install` 即可
+- `office-oxide`、`pdf-oxide` 和 `mupdf` 自带各平台预编译二进制，无需 node-gyp
+- 三者已在构建配置中标记为 `external`，`yarn install` 即可
