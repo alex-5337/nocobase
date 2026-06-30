@@ -23,6 +23,7 @@ const availableActions: {
     displayName: '{{t("Add new")}}',
     type: 'new-data',
     onNewRecord: true,
+    aliases: ['create', 'firstOrCreate', 'updateOrCreate', 'upload'],
     allowConfigureFields: true,
   },
   // import: {
