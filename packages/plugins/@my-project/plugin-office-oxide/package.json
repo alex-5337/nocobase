@@ -1,0 +1,25 @@
+{
+  "name": "@my-project/plugin-office-oxide",
+  "version": "2.0.58",
+  "main": "dist/server/index.js",
+  "description": "Convert Office (DOCX/XLSX/PPTX) and PDF documents to Markdown or HTML using local native libraries (office-oxide, pdf-oxide) with optional MinerU cloud OCR. Supports scanned PDFs, images, table recognition, formula parsing, and configurable processing engines.",
+  "description.zh-CN": "将 Office (DOCX/XLSX/PPTX) 和 PDF 文档转换为 Markdown 或 HTML，支持本地引擎 (office-oxide, pdf-oxide) 和 MinerU 云端 OCR。支持扫描件、图片、表格识别、公式解析，处理引擎可按文件类型分别配置。",
+  "description.en-US": "Convert Office (DOCX/XLSX/PPTX) and PDF documents to Markdown or HTML using local native libraries (office-oxide, pdf-oxide) with optional MinerU cloud OCR. Supports scanned PDFs, images, table recognition, formula parsing, and configurable processing engines.",
+  "displayName": "Office Oxide",
+  "displayName.zh-CN": "Office 文档转换",
+  "displayName.en-US": "Office Oxide",
+  "keywords": ["AI", "office", "ocr", "mineru"],
+  "author": "my-project",
+  "license": "MIT",
+  "dependencies": {
+    "mineru-open-sdk": "^0.2.5",
+    "office-oxide": "^0.1.2",
+    "pdf-oxide": "^0.3.38",
+    "mupdf": "^1.27.0"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  }
+}

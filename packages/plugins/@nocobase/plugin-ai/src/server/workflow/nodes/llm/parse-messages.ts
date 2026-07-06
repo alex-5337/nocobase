@@ -25,7 +25,7 @@ type Message = {
 };
 
 async function encodeLocalImage(url: string) {
-  url = path.join(process.cwd(), url);
+  url = decodeURIComponent(path.join(process.cwd(), url));
   const imageData = await fs.promises.readFile(url);
   return `data:image/png;base64,${imageData.toString('base64')}`;
 }
