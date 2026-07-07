@@ -1,0 +1,27 @@
+{
+  "name": "@my-project/plugin-template-print",
+  "version": "2.1.19",
+  "main": "dist/server/index.js",
+  "displayName": "Template Print",
+  "displayName.zh-CN": "模板打印",
+  "description": "Design Word/Excel templates online and print data with them.",
+  "description.zh-CN": "在线设计 Word/Excel 模板，用数据填充并打印下载。",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "archiver": "^5.3.1",
+    "exceljs": "^4.4.0",
+    "html-docx-js": "^0.3.1"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/database": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x",
+    "@nocobase/utils": "2.x"
+  },
+  "keywords": [
+    "Actions",
+    "Print"
+  ]
+}
