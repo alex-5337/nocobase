@@ -8,11 +8,8 @@
  */
 
 export const registerFontSize = (Quill) => {
-  const SizeStyle = Quill.import('attributors/style/size');
-  SizeStyle.whitelist = ['12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'];
-  Quill.register(SizeStyle, true);
-
-  // Set the default font size to 14px
-  const Parchment = Quill.import('parchment');
-  SizeStyle.add(Parchment.Scope.BLOCK, '14px');
+  // Quill v2: Size is registered as 'formats/size' instead of 'attributors/style/size'
+  const Size = Quill.import('formats/size');
+  Size.whitelist = ['12px', '14px', '16px', '18px', '20px', '24px', '32px', '48px'];
+  Quill.register(Size, true);
 };

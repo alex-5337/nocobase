@@ -23,7 +23,7 @@ const ReactQuill = lazy(async () => {
   registerSmartBreak(Quill);
   await registerImageResize(Quill);
 
-  return import('react-quill');
+  return import('react-quill-new');
 });
 
 export const RichTextField = (props) => {
@@ -90,6 +90,7 @@ export const RichTextField = (props) => {
       modules={propsModules || modules}
       formats={propsFormats || formats}
       value={value}
+      useSemanticHTML={false}
       onChange={(value) => {
         if (value === '<p><br></p>') {
           onChange('');

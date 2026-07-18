@@ -1,6 +1,6 @@
 # Rich Text
 
-富文本编辑器。其基于 [react-quill](https://github.com/zenoamaro/react-quill) 封装。
+富文本编辑器。其基于 [react-quill-new](https://github.com/VaguelySerious/react-quill) 封装。
 
 ## Basic Usage
 

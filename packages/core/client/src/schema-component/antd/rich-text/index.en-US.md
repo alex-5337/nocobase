@@ -1,6 +1,6 @@
 # Rich Text
 
-Rich Text Editor. It is a wrapper based on [react-quill](https://github.com/zenoamaro/react-quill).
+Rich Text Editor. It is a wrapper based on [react-quill-new](https://github.com/VaguelySerious/react-quill).
 
 ## Basic Usage
 

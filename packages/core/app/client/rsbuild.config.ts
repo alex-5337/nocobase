@@ -349,7 +349,7 @@ export default defineConfig(({ command }) => {
                 minSize: 0,
               },
               editorEcosystem: {
-                test: /[\\/]node_modules[\\/](?:slate|slate-react|slate-history|quill|react-quill|quill-image-resize-module-react|codemirror|@codemirror[\\/]|@lezer[\\/])/,
+                test: /[\\/]node_modules[\\/](?:slate|slate-react|slate-history|quill|react-quill|react-quill-new|quill-table-better|quill-image-resize-module-react|@mgreminger[\\/]quill-image-resize-module|codemirror|@codemirror[\\/]|@lezer[\\/])/,
                 name: 'vendor-editor',
                 chunks: 'all',
                 priority: 51,
