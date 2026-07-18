@@ -1,58 +1,39 @@
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
 import React, { useCallback, useEffect, useState } from 'react';
 import { Cascader } from 'antd';
 import { useCollectionManager, useCompile } from '@nocobase/client';
 import { useTranslation } from 'react-i18next';
 import type { DefaultOptionType } from 'antd/es/cascader';
 import { NAMESPACE } from './locale';
+import { buildFieldOptionsTree } from './qrcode-utils';
 
+/**
+ * CollectionFieldPicker 组件的属性接口
+ */
 interface CollectionFieldPickerProps {
-  /** The collection name to get fields from */
+  /** 数据表名称，用于获取字段列表 */
   collectionName: string;
-  /** Called when a field is selected, receives dot-separated field path */
+  /** 选中字段后的回调，接收点分隔的字段路径（如 "user.name"） */
   onInsert: (fieldPath: string) => void;
-  /** Optional button label */
+  /** 可选的触发器按钮文本 */
   label?: string;
+  /** 是否禁用 */
   disabled?: boolean;
 }
 
-const ASSOCIATION_TYPES = new Set(['belongsTo', 'hasOne', 'hasMany', 'belongsToMany', 'belongsToArray']);
-const MAX_DEPTH = 4;
-
 /**
- * Recursively builds field option tree.
- * getCollectionFields is synchronous (reads from in-memory cache), so eager
- * recursive building is safe and avoids Cascader loadData flicker issues.
+ * 数据表字段选择器组件。
+ * 使用 Cascader 级联选择器展示字段树，支持关联字段展开，
+ * 选中后以点分隔路径（如 "user.profile.name"）回调。
  */
-function buildFieldOptionsTree(
-  collectionName: string,
-  getCollectionFields: (name: string) => any[],
-  compile: (val: any) => string,
-  depth = 0,
-): DefaultOptionType[] {
-  if (depth >= MAX_DEPTH || !collectionName) return [];
-
-  const fields = getCollectionFields(collectionName);
-  if (!fields?.length) return [];
-
-  return fields
-    .filter((field) => field.interface && !field.hidden)
-    .map((field) => {
-      const isAssociation = ASSOCIATION_TYPES.has(field.type);
-      const option: DefaultOptionType = {
-        value: field.name,
-        label: compile(field.uiSchema?.title || field.name),
-        isLeaf: !isAssociation,
-      };
-      if (isAssociation && field.target) {
-        const children = buildFieldOptionsTree(field.target, getCollectionFields, compile, depth + 1);
-        if (children.length > 0) {
-          option.children = children;
-        }
-      }
-      return option;
-    });
-}
-
 export const CollectionFieldPicker: React.FC<CollectionFieldPickerProps> = ({
   collectionName,
   onInsert,
@@ -64,9 +45,10 @@ export const CollectionFieldPicker: React.FC<CollectionFieldPickerProps> = ({
   const cm = useCollectionManager();
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
 
+  // 封装获取字段列表的方法，防止 cm 未就绪时报错
   const getCollectionFields = useCallback((name: string) => cm?.getCollection(name)?.getFields() ?? [], [cm]);
 
-  // Rebuild the full option tree whenever collectionName changes
+  // 当 collectionName 变化时，重建完整的字段选项树
   useEffect(() => {
     if (!collectionName) {
       setOptions([]);
@@ -76,8 +58,9 @@ export const CollectionFieldPicker: React.FC<CollectionFieldPickerProps> = ({
     setOptions(opts);
   }, [collectionName, getCollectionFields, compile]);
 
+  // 处理字段选中事件，将选中路径拼接为点分隔的字段路径
   const handleChange = useCallback(
-    (_value: any[], selectedOptions?: DefaultOptionType[]) => {
+    (value: (string | number)[] | undefined, selectedOptions?: DefaultOptionType[]) => {
       if (!selectedOptions?.length) return;
       const fieldPath = selectedOptions.map((o) => o.value as string).join('.');
       onInsert(fieldPath);
@@ -88,11 +71,12 @@ export const CollectionFieldPicker: React.FC<CollectionFieldPickerProps> = ({
   return (
     <Cascader
       options={options}
-      onChange={handleChange as any}
+      onChange={handleChange}
       disabled={disabled || !collectionName}
       placeholder={t('Select a field')}
       style={{ minWidth: 160 }}
     >
+      {/* 自定义触发器，显示标签或默认的 {x} 占位符 */}
       <span
         style={{
           cursor: disabled || !collectionName ? 'not-allowed' : 'pointer',

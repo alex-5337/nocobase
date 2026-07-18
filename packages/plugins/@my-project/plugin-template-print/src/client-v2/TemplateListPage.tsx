@@ -1,4 +1,13 @@
-import React, { useMemo, useState } from 'react';
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, message, Popconfirm, Space } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +15,9 @@ import { useApp } from '@nocobase/client-v2';
 
 const NAMESPACE = 'plugin-template-print';
 
+/**
+ * 模板数据接口
+ */
 interface Template {
   id: number;
   name: string;
@@ -14,10 +26,20 @@ interface Template {
   enabled: boolean;
   content: string;
   variables: any[];
+  pageSettings?: {
+    paperSize?: string;
+    orientation?: string;
+    margins?: { top?: number; bottom?: number; left?: number; right?: number };
+  };
   description: string;
   createdAt: string;
 }
 
+/**
+ * 模板管理列表页（V2 运行时版本）。
+ * 提供基础的模板增删改查功能。
+ * 注意：V2 版本暂未集成 Word/Excel 编辑器，模板内容以纯文本形式编辑。
+ */
 export const TemplateListPage: React.FC = () => {
   const { t } = useTranslation(NAMESPACE);
   const [data, setData] = useState<Template[]>([]);
@@ -27,6 +49,7 @@ export const TemplateListPage: React.FC = () => {
   const [form] = Form.useForm();
   const app = useApp();
 
+  // 构建数据表下拉选项
   const collectionOptions = useMemo(() => {
     const ds = app.dataSourceManager?.getDataSource('main');
     if (!ds) return [];
@@ -37,7 +60,8 @@ export const TemplateListPage: React.FC = () => {
     }));
   }, [app]);
 
-  const fetchData = async () => {
+  /** 加载模板列表 */
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await app.apiClient.request({ url: 'printTemplates:list' });
@@ -47,12 +71,14 @@ export const TemplateListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [app.apiClient, t]);
 
-  React.useEffect(() => {
+  // 组件挂载时加载数据
+  useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
+  /** 打开新建模板弹窗 */
   const handleCreate = () => {
     setEditingTemplate(null);
     form.resetFields();
@@ -60,12 +86,14 @@ export const TemplateListPage: React.FC = () => {
     setModalVisible(true);
   };
 
+  /** 打开编辑模板弹窗 */
   const handleEdit = (record: Template) => {
     setEditingTemplate(record);
     form.setFieldsValue(record);
     setModalVisible(true);
   };
 
+  /** 删除模板 */
   const handleDelete = async (id: number) => {
     try {
       await app.apiClient.request({ url: `printTemplates:destroy/${id}`, method: 'post' });
@@ -76,6 +104,7 @@ export const TemplateListPage: React.FC = () => {
     }
   };
 
+  /** 保存模板（新增或更新） */
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
@@ -108,6 +137,7 @@ export const TemplateListPage: React.FC = () => {
     }
   };
 
+  // 表格列定义
   const columns = [
     { title: t('Name'), dataIndex: 'name', key: 'name' },
     {
@@ -139,6 +169,7 @@ export const TemplateListPage: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      {/* 页面标题 + 新建按钮 */}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h2>{t('Templates')}</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
@@ -146,20 +177,25 @@ export const TemplateListPage: React.FC = () => {
         </Button>
       </div>
 
+      {/* 模板列表表格 */}
       <Table rowKey="id" columns={columns} dataSource={data} loading={loading} />
 
+      {/* 新建/编辑弹窗 */}
       <Modal
         title={editingTemplate ? t('Edit Template') : t('New Template')}
         open={modalVisible}
         onOk={handleSave}
         onCancel={() => setModalVisible(false)}
-        width={900}
+        width={1200}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
+          {/* 模板名称 */}
           <Form.Item name="name" label={t('Name')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
+
+          {/* 模板类型 */}
           <Form.Item name="type" label={t('Type')} rules={[{ required: true }]}>
             <Select
               options={[
@@ -168,22 +204,28 @@ export const TemplateListPage: React.FC = () => {
               ]}
             />
           </Form.Item>
+
+          {/* 关联数据表 */}
           <Form.Item name="collectionName" label={t('Collection')} rules={[{ required: true }]}>
             <Select
               showSearch
               placeholder={t('Select a collection')}
               options={collectionOptions}
-              filterOption={(input, option) =>
-                (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
-              }
+              filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
             />
           </Form.Item>
+
+          {/* 描述 */}
           <Form.Item name="description" label={t('Description')}>
             <Input.TextArea rows={2} />
           </Form.Item>
+
+          {/* 启用开关 */}
           <Form.Item name="enabled" label={t('Enabled')} valuePropName="checked">
             <Switch />
           </Form.Item>
+
+          {/* 模板内容（纯文本编辑） */}
           <Form.Item name="content" label={t('Template Content')}>
             <Input.TextArea rows={10} placeholder={t('Enter template content (HTML)')} />
           </Form.Item>
