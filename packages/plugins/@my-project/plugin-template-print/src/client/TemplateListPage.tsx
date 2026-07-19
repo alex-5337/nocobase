@@ -10,7 +10,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Switch, message, Popconfirm, Space, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useAPIClient, useCollectionManager_deprecated, useDataSourceManager, useCompile } from '@nocobase/client';
+import { useAPIClient, useDataSourceManager, useCompile } from '@nocobase/client';
 import { useTranslation } from 'react-i18next';
 import { NAMESPACE } from './locale';
 import { WordTemplateEditor, WordTemplateEditorHandle } from './WordTemplateEditor';
@@ -80,27 +80,91 @@ export const TemplateListPage: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [form] = Form.useForm();
   const apiClient = useAPIClient();
-  const { collections } = useCollectionManager_deprecated();
   const dm = useDataSourceManager();
   const compile = useCompile();
   const wordEditorRef = useRef<WordTemplateEditorHandle>(null);
 
-  // 构建数据表下拉选项（过滤隐藏的数据表）
-  const collectionOptions = useMemo(
-    () =>
-      (collections || [])
-        .filter((c: any) => !c?.hidden)
-        .map((c: any) => ({
-          label: `${c?.title || c.name} (${c.name})`,
-          value: c.name,
-        })),
-    [collections],
+  // 通过 API 获取数据表列表
+  const [collections, setCollections] = useState<any[]>([]);
+  const fetchCollections = useCallback(async () => {
+    try {
+      // appends=category 带出数据表的分类信息，用于分组展示
+      const res = await apiClient.request({
+        url: 'collections:list',
+        params: { appends: ['category'], paginate: false },
+      });
+      setCollections(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch collections', err);
+    }
+  }, [apiClient]);
+
+  // 组件挂载时加载数据表列表
+  useEffect(() => {
+    fetchCollections();
+  }, [fetchCollections]);
+
+  // 构建按分类分组的数据表选项
+  // collections 通过 API 的 appends=category 带出分类信息，
+  // category 是 belongsToMany 关联，格式为 [{ id, name, color }]
+  const groupedCollectionOptions = useMemo(() => {
+    const groups: Record<string, { category: string; children: { label: string; value: string }[] }> = {};
+    collections.forEach((c: any) => {
+      const catName = c.category?.[0]?.name || t('Others');
+      if (!groups[catName]) {
+        groups[catName] = { category: catName, children: [] };
+      }
+      groups[catName].children.push({
+        label: `${c?.title || c.name} (${c.name})`,
+        value: c.name,
+      });
+    });
+    return Object.values(groups);
+  }, [collections, t]);
+
+  // 分类筛选状态（空字符串 = 全部）
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  // 分类下拉选项
+  const categoryOptions = useMemo(() => {
+    return [
+      { label: t('All'), value: '' },
+      ...groupedCollectionOptions.map((g) => ({
+        label: g.category,
+        value: g.category,
+      })),
+    ];
+  }, [groupedCollectionOptions, t]);
+
+  // 根据选中分类筛选后的数据表选项（扁平列表，不再用 OptGroup）
+  const filteredCollectionOptions = useMemo(() => {
+    if (!selectedCategory) {
+      return groupedCollectionOptions.flatMap((g) => g.children);
+    }
+    return groupedCollectionOptions.find((g) => g.category === selectedCategory)?.children || [];
+  }, [groupedCollectionOptions, selectedCategory]);
+
+  // 分类变化时，如果当前选中的数据表不属于新分类，则清空
+  const handleCategoryChange = useCallback(
+    (cat: string) => {
+      setSelectedCategory(cat);
+      const colName = form.getFieldValue('collectionName');
+      if (colName) {
+        const isInCategory = groupedCollectionOptions
+          .filter((g) => !cat || g.category === cat)
+          .some((g) => g.children.some((c) => c.value === colName));
+        if (!isInCategory) {
+          form.setFieldValue('collectionName', undefined);
+        }
+      }
+    },
+    [form, groupedCollectionOptions],
   );
 
   // 构建 dataSourceName -> displayName 的映射，用于数据源列展示
   const dataSourceDisplayMap = useMemo(() => {
     const map: Record<string, string> = {};
-    (collections || []).forEach((c: any) => {
+    collections.forEach((c: any) => {
       const dsKey = c.dataSource || c.options?.dataSource || 'main';
       if (!map[dsKey]) {
         const ds = dm?.getDataSource(dsKey);
@@ -113,7 +177,7 @@ export const TemplateListPage: React.FC = () => {
   // 构建 collectionName -> dataSourceKey 的映射，用于数据源列的快速查找
   const collectionDataSourceMap = useMemo(() => {
     const map: Record<string, string> = {};
-    (collections || []).forEach((c: any) => {
+    collections.forEach((c: any) => {
       map[c.name] = c.dataSource || c.options?.dataSource || 'main';
     });
     return map;
@@ -122,7 +186,7 @@ export const TemplateListPage: React.FC = () => {
   // 构建 collectionName -> title 的映射
   const collectionTitleMap = useMemo(() => {
     const map: Record<string, string> = {};
-    (collections || []).forEach((c: any) => {
+    collections.forEach((c: any) => {
       map[c.name] = c.title || c.options?.title || c.name;
     });
     return map;
@@ -193,41 +257,54 @@ export const TemplateListPage: React.FC = () => {
   };
 
   /** 保存模板（新增或更新） */
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      // Word 模板：确保从编辑器 DOM 直接读取内容，避免 Quill 的 getSemanticHTML() 丢失自定义 blot HTML
-      if (values.type === 'word') {
-        values.content = wordEditorRef.current?.getHTML() || values.content || '';
-      }
-      if (!values.content) {
-        message.warning(t('Please edit template content'));
-        return;
-      }
+  const doSave = useCallback(
+    async (keepOpen?: boolean) => {
+      try {
+        const values = await form.validateFields();
+        // Word 模板：确保从编辑器 DOM 直接读取内容，避免 Quill 的 getSemanticHTML() 丢失自定义 blot HTML
+        if (values.type === 'word') {
+          values.content = wordEditorRef.current?.getHTML() || values.content || '';
+        }
+        if (!values.content) {
+          message.warning(t('Please edit template content'));
+          return;
+        }
 
-      if (editingTemplate) {
-        await apiClient.request({
-          url: `printTemplates:update/${editingTemplate.id}`,
-          method: 'post',
-          data: values,
-        });
-        message.success(t('Updated'));
-      } else {
-        await apiClient.request({
-          url: 'printTemplates:create',
-          method: 'post',
-          data: values,
-        });
-        message.success(t('Created'));
+        if (editingTemplate) {
+          await apiClient.request({
+            url: `printTemplates:update/${editingTemplate.id}`,
+            method: 'post',
+            data: values,
+          });
+          message.success(t('Updated'));
+        } else {
+          await apiClient.request({
+            url: 'printTemplates:create',
+            method: 'post',
+            data: values,
+          });
+          message.success(t('Created'));
+        }
+        if (!keepOpen) {
+          setModalVisible(false);
+        }
+        fetchData();
+      } catch (err: any) {
+        const action = keepOpen ? t('Save Draft') : t('Save');
+        // 尝试多种错误格式：Ant Design 表单校验 / Axios API / 标准 Error
+        const detail =
+          err.errorFields?.[0]?.errors?.[0] ||
+          err.response?.data?.errors?.[0]?.message ||
+          err.message ||
+          t('Unknown error');
+        message.error(`${action}${t('failed')}: ${detail}`);
       }
-      setModalVisible(false);
-      fetchData();
-    } catch (err: any) {
-      if (err.message) {
-        message.error(err.message);
-      }
-    }
-  };
+    },
+    [form, editingTemplate, apiClient, t, wordEditorRef, fetchData],
+  );
+
+  const handleSave = useCallback(() => doSave(false), [doSave]);
+  const handleDraftSave = useCallback(() => doSave(true), [doSave]);
 
   // 表格列定义
   const columns = [
@@ -321,6 +398,15 @@ export const TemplateListPage: React.FC = () => {
         onCancel={() => setModalVisible(false)}
         width={1200}
         destroyOnClose
+        footer={(_, { OkBtn, CancelBtn }) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Button onClick={handleDraftSave}>{t('Save Draft')}</Button>
+            <Space>
+              <CancelBtn />
+              <OkBtn />
+            </Space>
+          </div>
+        )}
       >
         <Form form={form} layout="vertical">
           <Tabs
@@ -345,17 +431,33 @@ export const TemplateListPage: React.FC = () => {
                       />
                     </Form.Item>
 
-                    {/* 关联数据表 */}
-                    <Form.Item name="collectionName" label={t('Collection')} rules={[{ required: true }]}>
-                      <Select
-                        showSearch
-                        placeholder={t('Select a collection')}
-                        options={collectionOptions}
-                        filterOption={(input, option) =>
-                          (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
-                        }
-                      />
-                    </Form.Item>
+                    {/* 分类 + 关联数据表（一行排列） */}
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                      <Form.Item label={t('Category')} style={{ flex: '0 0 200px' }}>
+                        <Select
+                          allowClear
+                          placeholder={t('All')}
+                          value={selectedCategory}
+                          onChange={handleCategoryChange}
+                          options={categoryOptions}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name="collectionName"
+                        label={t('Collection')}
+                        rules={[{ required: true }]}
+                        style={{ flex: 1 }}
+                      >
+                        <Select
+                          showSearch
+                          placeholder={t('Select a collection')}
+                          filterOption={(input, option) =>
+                            (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                          }
+                          options={filteredCollectionOptions}
+                        />
+                      </Form.Item>
+                    </div>
 
                     {/* 描述 */}
                     <Form.Item name="description" label={t('Description')}>

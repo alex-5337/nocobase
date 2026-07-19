@@ -310,47 +310,348 @@ async function renderWord(
 }
 
 /**
- * 渲染 Excel 模板。
- * 根据模板配置中的列定义，生成带表头和数据行的 Excel 文件。
+ * 列配置接口（服务端副本）—— 兼容旧版 columns 格式
+ */
+interface ExcelColumnConfig {
+  key: string;
+  label: string;
+  fieldPath: string;
+  isSequence: boolean;
+  defaultValue: string;
+  floatDirection: 'none' | 'downward' | 'rightward';
+}
+
+/**
+ * 网格单元格接口（v2 网格格式）
+ */
+interface GridCell {
+  text: string;
+  fieldPath: string;
+  floatDirection: 'none' | 'downward' | 'rightward';
+  defaultValue: string;
+  isSequence: boolean;
+  bold: boolean;
+}
+
+/**
+ * 渲染 Excel 模板（增强版）。
  *
- * @param templateContent - JSON 格式的模板配置（包含 columns 数组）
+ * 同时支持两种模板格式：
+ * - v1 columns 格式：旧版列配置列表
+ * - v2 grid 格式：新版网格表格（单元格可绑字段、浮动方向）
+ *
+ * v2 网格格式说明：
+ * - 模板是一个 R×C 的表格，每个单元格可以绑定字段
+ * - 每条记录重复渲染一次模板网格
+ * - floatDirection='downward'：若字段值为数组，该单元格纵向扩展
+ * - floatDirection='rightward'：若字段值为数组，该单元格横向扩展
+ *
+ * @param templateContent - JSON 格式的模板配置
  * @param records - 数据记录列表
  * @returns Excel 文件的 Buffer
  */
 async function renderExcel(templateContent: string, records: Record<string, any>[]): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
-
-  // 解析模板 JSON 配置
   const templateConfig = JSON.parse(templateContent);
+
+  // 根据 version 选择渲染引擎
+  if (templateConfig.version === 2 && templateConfig.cells) {
+    return renderSpreadsheetGrid(templateConfig, records);
+  }
+
+  // 旧版 columns 格式
+  return renderColumnsFormat(templateConfig, records);
+}
+
+/**
+ * 旧版 columns 格式渲染
+ */
+async function renderColumnsFormat(templateConfig: any, records: Record<string, any>[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
   const sheetName = templateConfig.sheetName || 'Sheet1';
   const worksheet = workbook.addWorksheet(sheetName);
 
-  if (templateConfig.columns) {
-    // 写入表头行（加粗）
-    const headerRow = worksheet.getRow(1);
-    templateConfig.columns.forEach((col: any, colIndex: number) => {
-      const cell = headerRow.getCell(colIndex + 1);
-      cell.value = col.label || '';
-      cell.font = { bold: true };
-    });
+  const columns: ExcelColumnConfig[] = (templateConfig.columns || []).map((c: any) => ({
+    ...c,
+    floatDirection: c.floatDirection || 'none',
+  }));
 
-    // 从第 2 行开始填充数据行
-    for (let i = 0; i < records.length; i++) {
-      const record = records[i];
-      const row = worksheet.getRow(i + 2);
+  if (columns.length === 0) {
+    const buf = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buf);
+  }
 
-      templateConfig.columns.forEach((col: any, colIndex: number) => {
-        const cell = row.getCell(colIndex + 1);
-        if (col.isSequence) {
-          // 序号列：自动生成行号
-          cell.value = i + 1;
-        } else if (col.fieldPath) {
-          // 字段列：从记录中提取值，为空时使用默认值
-          const value = extractFieldValue(record, col.fieldPath);
-          cell.value = value != null ? value : col.defaultValue ?? '';
+  // ===== Phase 1: 计算布局 =====
+  const rightwardMaxes: Record<string, number> = {};
+  for (const col of columns) {
+    if (col.floatDirection === 'rightward' && col.fieldPath) {
+      let maxLen = 0;
+      for (const record of records) {
+        const val = extractFieldValue(record, col.fieldPath);
+        if (Array.isArray(val)) {
+          maxLen = Math.max(maxLen, val.length);
         }
-      });
+      }
+      rightwardMaxes[col.key] = maxLen || 1;
     }
+  }
+
+  const flatHeaders: Array<{ col: ExcelColumnConfig; subIndex?: number }> = [];
+  for (const col of columns) {
+    if (col.floatDirection === 'rightward') {
+      const count = rightwardMaxes[col.key] || 1;
+      for (let i = 0; i < count; i++) {
+        flatHeaders.push({ col, subIndex: i + 1 });
+      }
+    } else {
+      flatHeaders.push({ col });
+    }
+  }
+
+  // ===== Phase 2: 写入表头 =====
+  const headerRow = worksheet.getRow(1);
+  flatHeaders.forEach((h, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    if (h.subIndex !== undefined) {
+      cell.value = `${h.col.label || ''}-${h.subIndex}`;
+    } else if (h.col.isSequence) {
+      cell.value = '#';
+    } else {
+      cell.value = h.col.label || '';
+    }
+    cell.font = { bold: true };
+  });
+
+  // ===== Phase 3: 逐记录写入数据块 =====
+  let currentRow = 2;
+
+  for (let recordIdx = 0; recordIdx < records.length; recordIdx++) {
+    const record = records[recordIdx];
+
+    let blockHeight = 1;
+    for (const col of columns) {
+      if (col.floatDirection === 'downward' && col.fieldPath) {
+        const val = extractFieldValue(record, col.fieldPath);
+        if (Array.isArray(val)) {
+          blockHeight = Math.max(blockHeight, val.length);
+        }
+      }
+    }
+
+    let colOffset = 1;
+
+    for (const col of columns) {
+      if (col.isSequence) {
+        for (let r = 0; r < blockHeight; r++) {
+          const cell = worksheet.getCell(currentRow + r, colOffset);
+          cell.value = r === 0 ? recordIdx + 1 : '';
+        }
+        colOffset++;
+      } else if (col.floatDirection === 'none') {
+        const value = extractFieldValue(record, col.fieldPath);
+        const displayValue = value != null ? value : col.defaultValue ?? '';
+        const cell = worksheet.getCell(currentRow, colOffset);
+        cell.value = displayValue;
+        if (blockHeight > 1) {
+          worksheet.mergeCells(currentRow, colOffset, currentRow + blockHeight - 1, colOffset);
+        }
+        colOffset++;
+      } else if (col.floatDirection === 'downward') {
+        const val = extractFieldValue(record, col.fieldPath);
+        if (Array.isArray(val)) {
+          for (let r = 0; r < val.length; r++) {
+            const cell = worksheet.getCell(currentRow + r, colOffset);
+            const itemValue = val[r];
+            cell.value =
+              itemValue != null ? (typeof itemValue === 'object' ? JSON.stringify(itemValue) : String(itemValue)) : '';
+          }
+          for (let r = val.length; r < blockHeight; r++) {
+            worksheet.getCell(currentRow + r, colOffset).value = '';
+          }
+        } else {
+          const cell = worksheet.getCell(currentRow, colOffset);
+          cell.value = val != null ? val : col.defaultValue ?? '';
+          if (blockHeight > 1) {
+            worksheet.mergeCells(currentRow, colOffset, currentRow + blockHeight - 1, colOffset);
+          }
+        }
+        colOffset++;
+      } else if (col.floatDirection === 'rightward') {
+        const val = extractFieldValue(record, col.fieldPath);
+        const count = rightwardMaxes[col.key] || 1;
+        if (Array.isArray(val)) {
+          for (let i = 0; i < count; i++) {
+            const cell = worksheet.getCell(currentRow, colOffset + i);
+            if (i < val.length) {
+              const itemValue = val[i];
+              cell.value =
+                itemValue != null
+                  ? typeof itemValue === 'object'
+                    ? JSON.stringify(itemValue)
+                    : String(itemValue)
+                  : '';
+            } else {
+              cell.value = '';
+            }
+          }
+        } else {
+          const cell = worksheet.getCell(currentRow, colOffset);
+          cell.value = val != null ? val : col.defaultValue ?? '';
+          if (count > 1) {
+            worksheet.mergeCells(currentRow, colOffset, currentRow, colOffset + count - 1);
+          }
+        }
+        colOffset += count;
+      }
+    }
+
+    currentRow += blockHeight;
+  }
+
+  // ===== Phase 4: 设置列宽 =====
+  flatHeaders.forEach((_, idx) => {
+    worksheet.getColumn(idx + 1).width = 18;
+  });
+
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * 新版网格格式（v2）渲染引擎。
+ *
+ * 模板是一个 R×C 的表格网格，每条记录重复渲染一次。
+ * 支持：
+ * - 任意行列的静态文本
+ * - 字段绑定（fieldPath 替换为记录值）
+ * - 向下浮动：数组字段纵向扩展为该单元格增加多行
+ * - 向右浮动：数组字段横向扩展为该单元格增加多列
+ * - 序号列 (isSequence)
+ */
+async function renderSpreadsheetGrid(config: any, records: Record<string, any>[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(config.sheetName || 'Sheet1');
+  const rowCount: number = config.rowCount || 1;
+  const colCount: number = config.colCount || 1;
+  const cells: Record<string, GridCell> = config.cells || {};
+
+  const getCell = (r: number, c: number): GridCell => cells[`R${r}C${c}`] || ({} as any);
+
+  let outputRow = 1;
+
+  // 遍历每条记录
+  for (let recordIdx = 0; recordIdx < records.length; recordIdx++) {
+    const record = records[recordIdx];
+
+    // 遍历模板的每一行
+    for (let r = 0; r < rowCount; r++) {
+      // 计算当前模板行是否有向下浮动的字段，以及最大扩展行数
+      let extraRows = 0;
+      const downwardFieldData: Record<number, { values: any[]; text: string }> = {};
+
+      for (let c = 0; c < colCount; c++) {
+        const cell = getCell(r, c);
+        if (cell.floatDirection === 'downward' && cell.fieldPath) {
+          const val = extractFieldValue(record, cell.fieldPath);
+          if (Array.isArray(val) && val.length > 1) {
+            extraRows = Math.max(extraRows, val.length - 1);
+            downwardFieldData[c] = { values: val, text: cell.text || '' };
+          }
+        }
+      }
+
+      // 写入当前行的各列
+      let outputCol = 1;
+
+      for (let c = 0; c < colCount; c++) {
+        const cell = getCell(r, c);
+
+        if (cell.isSequence) {
+          // 序号列
+          for (let rr = 0; rr <= extraRows; rr++) {
+            const targetCell = worksheet.getCell(outputRow + rr, outputCol);
+            targetCell.value = rr === 0 ? recordIdx + 1 : '';
+          }
+          outputCol++;
+          continue;
+        }
+
+        if (cell.floatDirection === 'rightward' && cell.fieldPath) {
+          // 向右浮动：横向展开
+          const val = extractFieldValue(record, cell.fieldPath);
+          if (Array.isArray(val) && val.length > 0) {
+            for (let i = 0; i < val.length; i++) {
+              const targetCell = worksheet.getCell(outputRow, outputCol + i);
+              const itemValue = val[i];
+              targetCell.value =
+                itemValue != null
+                  ? typeof itemValue === 'object'
+                    ? JSON.stringify(itemValue)
+                    : String(itemValue)
+                  : '';
+            }
+            outputCol += Math.max(val.length, 1);
+          } else {
+            // 非数组：显示文本+值
+            const value = extractFieldValue(record, cell.fieldPath);
+            const displayVal = value != null ? value : cell.defaultValue ?? cell.text ?? '';
+            worksheet.getCell(outputRow, outputCol).value = displayVal;
+            outputCol++;
+          }
+          // 该列之后的列需要跳过被占用的索引
+          continue;
+        }
+
+        if (downwardFieldData[c]) {
+          // 向下浮动：纵向展开
+          const { values, text } = downwardFieldData[c];
+          const textCell = worksheet.getCell(outputRow, outputCol);
+          textCell.value = text || (values[0] != null ? String(values[0]) : '');
+
+          for (let rr = 1; rr <= extraRows; rr++) {
+            const targetCell = worksheet.getCell(outputRow + rr, outputCol);
+            if (rr < values.length) {
+              const itemValue = values[rr];
+              targetCell.value =
+                itemValue != null
+                  ? typeof itemValue === 'object'
+                    ? JSON.stringify(itemValue)
+                    : String(itemValue)
+                  : '';
+            } else {
+              targetCell.value = '';
+            }
+          }
+          outputCol++;
+          continue;
+        }
+
+        // 普通单元格（无浮动 或 无数组值）
+        let cellValue: any = cell.text ?? '';
+
+        if (cell.fieldPath) {
+          const val = extractFieldValue(record, cell.fieldPath);
+          cellValue = val != null ? val : cell.defaultValue ?? cell.text ?? '';
+        }
+
+        // 如果当前行有向下扩展，普通单元格需要跨行合并
+        const writeCell = worksheet.getCell(outputRow, outputCol);
+        writeCell.value = cellValue;
+
+        if (extraRows > 0) {
+          worksheet.mergeCells(outputRow, outputCol, outputRow + extraRows, outputCol);
+        }
+
+        outputCol++;
+      }
+
+      // 跳过高亮扩展行
+      outputRow += 1 + extraRows;
+    }
+  }
+
+  // 设置列宽
+  for (let c = 0; c < colCount; c++) {
+    worksheet.getColumn(c + 1).width = 18;
   }
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();

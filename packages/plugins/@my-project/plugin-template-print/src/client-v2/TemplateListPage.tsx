@@ -50,15 +50,25 @@ export const TemplateListPage: React.FC = () => {
   const app = useApp();
 
   // 构建数据表下拉选项
-  const collectionOptions = useMemo(() => {
+  // 不使用 useMemo 缓存，因为 collectionManager.getCollections() 返回的数组引用
+  // 在 setCollections() 后可能变化，缓存会导致选项不更新
+  const getCollectionOptions = React.useCallback(() => {
     const ds = app.dataSourceManager?.getDataSource('main');
-    if (!ds) return [];
-    const collections = ds.collectionManager?.getCollections() || [];
+    if (!ds?.collectionManager) return [] as { label: string; value: string }[];
+    const collections = ds.collectionManager.getCollections() || [];
     return collections.map((c: any) => ({
       label: `${c.title || c.name} (${c.name})`,
       value: c.name,
     }));
   }, [app]);
+  // 使用 state 强制在有数据时刷新，确保 Select 能获取到选项
+  const [collectionOptions, setCollectionOptions] = React.useState<{ label: string; value: string }[]>([]);
+  useEffect(() => {
+    const opts = getCollectionOptions();
+    if (opts.length > 0) {
+      setCollectionOptions(opts);
+    }
+  }, [getCollectionOptions]);
 
   /** 加载模板列表 */
   const fetchData = useCallback(async () => {

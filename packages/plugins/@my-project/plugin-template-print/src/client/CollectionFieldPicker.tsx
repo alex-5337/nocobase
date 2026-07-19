@@ -23,8 +23,8 @@ interface CollectionFieldPickerProps {
   collectionName: string;
   /** 选中字段后的回调，接收点分隔的字段路径（如 "user.name"） */
   onInsert: (fieldPath: string) => void;
-  /** 可选的触发器按钮文本 */
-  label?: string;
+  /** 可选的触发器按钮内容 */
+  label?: React.ReactNode;
   /** 是否禁用 */
   disabled?: boolean;
 }
