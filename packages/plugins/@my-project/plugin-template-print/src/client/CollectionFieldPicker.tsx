@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Cascader } from 'antd';
-import { useCollectionManager, useCompile } from '@nocobase/client';
+import { useCollectionManager_deprecated, useCompile } from '@nocobase/client';
 import { useTranslation } from 'react-i18next';
 import type { DefaultOptionType } from 'antd/es/cascader';
 import { NAMESPACE } from './locale';
@@ -42,11 +42,8 @@ export const CollectionFieldPicker: React.FC<CollectionFieldPickerProps> = ({
 }) => {
   const { t } = useTranslation(NAMESPACE);
   const compile = useCompile();
-  const cm = useCollectionManager();
+  const { getCollectionFields } = useCollectionManager_deprecated();
   const [options, setOptions] = useState<DefaultOptionType[]>([]);
-
-  // 封装获取字段列表的方法，防止 cm 未就绪时报错
-  const getCollectionFields = useCallback((name: string) => cm?.getCollection(name)?.getFields() ?? [], [cm]);
 
   // 当 collectionName 变化时，重建完整的字段选项树
   useEffect(() => {

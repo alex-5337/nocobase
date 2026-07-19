@@ -9,7 +9,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Radio, Space, Cascader } from 'antd';
-import { useCollectionManager, useCompile } from '@nocobase/client';
+import { useCollectionManager_deprecated, useCompile } from '@nocobase/client';
 import { useTranslation } from 'react-i18next';
 import { NAMESPACE } from './locale';
 import { buildFieldOptionsTree } from './qrcode-utils';
@@ -65,11 +65,8 @@ export const QrcodeInsertModal: React.FC<QrcodeInsertModalProps> = ({
 }) => {
   const { t } = useTranslation(NAMESPACE);
   const compile = useCompile();
-  const cm = useCollectionManager();
+  const { getCollectionFields } = useCollectionManager_deprecated();
   const [form] = Form.useForm();
-
-  // 封装获取字段列表的方法
-  const getCollectionFields = useCallback((name: string) => cm?.getCollection(name)?.getFields() ?? [], [cm]);
 
   // 根据 collectionName 构建字段选项树
   const fieldOptions = useMemo(() => {

@@ -89,9 +89,9 @@ export const TemplateListPage: React.FC = () => {
   const collectionOptions = useMemo(
     () =>
       (collections || [])
-        .filter((c: any) => !c?.options?.hidden)
+        .filter((c: any) => !c?.hidden)
         .map((c: any) => ({
-          label: `${c.options?.title || c.name} (${c.name})`,
+          label: `${c?.title || c.name} (${c.name})`,
           value: c.name,
         })),
     [collections],
