@@ -7,6 +7,15 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Form } from 'antd';
 import ReactQuill from 'react-quill-new';
@@ -21,12 +30,25 @@ import { CollectionFieldPicker } from './CollectionFieldPicker';
 import { QrcodeInsertModal, type QrcodeConfig } from './QrcodeInsertModal';
 import { generateQrcodePlaceholderHTML, getConfigFromImg, QRCODE_ICON_SVG } from './qrcode-utils';
 import { registerFonts, DEFAULT_FONTS } from './font-utils';
+import {
+  registerSizes,
+  registerLineHeights,
+  FONT_SIZES,
+  FONT_SIZE_LABELS,
+  LINE_HEIGHTS,
+  LINE_HEIGHT_ICON_SVG,
+  HEADING_SIZE_MAP,
+  DEFAULT_BODY_SIZE,
+} from './quill-formats';
 
 // 注册 quill-table-better 模块
 Quill.register({ 'modules/table-better': QuillTableBetter }, true);
 
 // 注册默认字体白名单（模块加载时执行），确保首次渲染就有可用字体
 registerFonts(DEFAULT_FONTS);
+// 注册字体大小和行间距格式
+registerSizes();
+registerLineHeights();
 
 /**
  * 注册一个虚拟 blot，使 Quill 工具栏将 'qrcode' 识别为已知格式，
@@ -56,6 +78,25 @@ const TABLE_MODULE_CONFIG = {
   menus: ['column', 'row', 'merge', 'table', 'cell', 'wrap', 'copy', 'delete'],
   toolbarTable: true,
 };
+
+interface DeltaOp {
+  insert?: unknown;
+  attributes?: Record<string, unknown>;
+}
+
+/**
+ * 为缺少字号属性的文本 op 补充正文默认字号（小四），
+ * 保证编辑器内容中不存在无字号的文本。
+ */
+function fillDefaultFontSize(delta: { ops?: DeltaOp[] }): void {
+  if (!delta?.ops) return;
+  delta.ops = delta.ops.map((op) => {
+    if (typeof op.insert === 'string' && !op.insert.includes('\n') && !op.attributes?.size) {
+      return { ...op, attributes: { ...op.attributes, size: DEFAULT_BODY_SIZE } };
+    }
+    return op;
+  });
+}
 
 /**
  * WordTemplateEditor 对外暴露的方法
@@ -132,6 +173,9 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
   const lastSelectionRef = useRef<any>(null);
   // 字体列表（直接传入工具栏，false 代表「清除格式」选项）
   const [fonts, setFonts] = useState<(string | false)[]>([false, ...DEFAULT_FONTS]);
+  // 字体白名单是否已加载完成。完成前不渲染编辑器，避免 modules 变化触发
+  // ReactQuill 销毁重建（regeneration 用原生 setContents，会破坏 table-better 内容）
+  const [fontsReady, setFontsReady] = useState(false);
   const apiClient = useAPIClient();
 
   // 组件挂载时从 API 加载字体白名单
@@ -146,6 +190,8 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
         }
       } catch {
         // API 失败时保持默认字体
+      } finally {
+        setFontsReady(true);
       }
     })();
   }, [apiClient]);
@@ -236,7 +282,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
     const observer = new ResizeObserver(() => update());
     observer.observe(el);
     return () => observer.disconnect();
-  }, [pageSettings]);
+  }, [pageSettings, fontsReady]);
 
   // 从表单读取已存储的模板内容
   const storedHTML = form.getFieldValue('content') || '';
@@ -301,6 +347,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
    *   解决方案：Monkey-patch setEditorContents 使用 updateContents。
    */
   useEffect(() => {
+    if (!fontsReady) return;
     const editor = getEditorSafe();
     if (!editor || matcherFixed.current) return;
     matcherFixed.current = true;
@@ -325,6 +372,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
         'background',
         'font',
         'size',
+        'lineheight',
         'header',
         'list',
         'indent',
@@ -364,6 +412,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
       if (typeof val === 'string') {
         // HTML 字符串 → 转换为 Delta → updateContents
         const delta = ed.clipboard.convert({ html: val });
+        fillDefaultFontSize(delta);
         // 暂时解除 editor-change 监听，防止程序化更新触发
         // onChange → setValue 循环导致 shouldComponentUpdate 重复调用 setEditorContents
         ed.off('editor-change', onEditorChange);
@@ -371,6 +420,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
         ed.on('editor-change', onEditorChange);
       } else {
         // Delta 对象直接更新
+        fillDefaultFontSize(val);
         ed.off('editor-change', onEditorChange);
         ed.updateContents(val, Quill.sources.USER);
         ed.on('editor-change', onEditorChange);
@@ -381,11 +431,14 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
         .catch(() => {});
     };
 
-    // 如果有已存储的内容，加载到编辑器
+    // 如果有已存储的内容，加载到编辑器；新模板则设置默认正文字号，
+    // 保证后续输入的文本带有小四字号
     if (storedHTML) {
       setValue(storedHTML);
+    } else {
+      editor.format('size', DEFAULT_BODY_SIZE, Quill.sources.SILENT);
     }
-  }, [storedHTML, getEditorSafe]);
+  }, [storedHTML, getEditorSafe, fontsReady]);
 
   /**
    * 插入数据字段变量（如 {customerName}）。
@@ -483,6 +536,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
 
   // 手动向 Quill 工具栏注入二维码按钮，避免 Quill 将其置灰
   useEffect(() => {
+    if (!fontsReady) return;
     const timer = setTimeout(() => {
       const toolbar = document.querySelector('.ql-toolbar.ql-snow');
       if (!toolbar) return;
@@ -524,9 +578,78 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
           }
         }
       }
+
+      // 修复 Quill 字号选择器显示：将 CSS pt 值映射为中文号数名（五号、小四…）
+      const sizePicker = toolbar.querySelector('.ql-picker.ql-size');
+      if (sizePicker) {
+        sizePicker.querySelectorAll('.ql-picker-item').forEach((item) => {
+          const value = item.getAttribute('data-value');
+          if (value && !item.hasAttribute('data-label')) {
+            item.setAttribute('data-label', FONT_SIZE_LABELS[value] || value);
+          }
+        });
+      }
+
+      // 手动注入行间距选择器（自定义格式不会被 Quill 工具栏自动识别）
+      if (!toolbar.querySelector('.ql-lineheight')) {
+        const picker = document.createElement('span');
+        picker.className = 'ql-picker ql-lineheight';
+        picker.style.marginLeft = '16px';
+
+        const lhLabel = document.createElement('span');
+        lhLabel.className = 'ql-picker-label';
+        lhLabel.setAttribute('data-value', '1.5');
+        lhLabel.innerHTML = LINE_HEIGHT_ICON_SVG;
+        lhLabel.addEventListener('click', () => {
+          picker.classList.toggle('ql-expanded');
+        });
+        picker.appendChild(lhLabel);
+
+        const optionsContainer = document.createElement('span');
+        optionsContainer.className = 'ql-picker-options';
+        optionsContainer.setAttribute('aria-hidden', 'true');
+
+        LINE_HEIGHTS.forEach((lh) => {
+          const item = document.createElement('span');
+          item.className = 'ql-picker-item';
+          item.setAttribute('data-value', lh);
+          item.innerHTML = `${LINE_HEIGHT_ICON_SVG} ${lh}`;
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const editor = getEditorSafe();
+            if (!editor) return;
+            const range = editor.getSelection(true);
+            if (range) {
+              editor.formatLine(range.index, range.length, 'lineheight', lh);
+            }
+            picker.classList.remove('ql-expanded');
+            lhLabel.setAttribute('data-value', lh);
+            lhLabel.innerHTML = LINE_HEIGHT_ICON_SVG;
+            editor.focus();
+          });
+          optionsContainer.appendChild(item);
+        });
+
+        picker.appendChild(optionsContainer);
+
+        // 点击其他区域关闭 picker
+        document.addEventListener('click', (ev) => {
+          if (!picker.contains(ev.target as Node)) {
+            picker.classList.remove('ql-expanded');
+          }
+        });
+
+        // 插入到对齐方式选择器后面
+        const alignPicker = toolbar.querySelector('.ql-align');
+        if (alignPicker?.parentNode) {
+          alignPicker.parentNode.insertBefore(picker, alignPicker.nextSibling);
+        } else {
+          toolbar.appendChild(picker);
+        }
+      }
     }, 100);
     return () => clearTimeout(timer);
-  }, [fonts]);
+  }, [fonts, getEditorSafe, fontsReady]);
 
   // Quill 模块配置，使用 useMemo 避免每次渲染重新创建
   const modules = useMemo(
@@ -535,6 +658,7 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
         container: [
           [{ font: fonts }],
           [{ header: [1, 2, 3, false] }],
+          [{ size: FONT_SIZES }],
           ['bold', 'italic', 'underline', 'strike'],
           [{ color: [] }, { background: [] }],
           [{ align: [] }],
@@ -550,13 +674,36 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
             if (!this.quill.hasFocus()) this.quill.focus();
             const range = this.quill.getSelection();
             if (!range) return;
-            if (value === false) {
-              // 清除字体格式
-              this.quill.removeFormat(range.index, range.length);
-            } else {
-              // 直接应用 font-family 内联样式
-              this.quill.formatText(range.index, range.length, { font: value });
+            this.quill.format('font', value === false ? false : value, Quill.sources.USER);
+          },
+          header(value: string | false | number) {
+            if (!this.quill.hasFocus()) this.quill.focus();
+            const range = this.quill.getSelection();
+            if (!range) return;
+            const headerValue = value === false ? false : Number(value);
+            // Normal 用正文默认字号（小四），Heading 用对应级别字号
+            const sizeValue = headerValue === false ? DEFAULT_BODY_SIZE : HEADING_SIZE_MAP[headerValue];
+            // 把选区扩展到整行文本，使字号像 Word 段落样式一样作用于整段，
+            // 而不是只影响光标处的后续输入
+            const [startLine] = this.quill.getLine(range.index);
+            const endIndex = range.index + range.length;
+            const [endLine] = this.quill.getLine(range.length > 0 ? endIndex - 1 : endIndex);
+            const start = this.quill.getIndex(startLine);
+            const end = this.quill.getIndex(endLine) + endLine.length() - 1; // 不含行尾换行符
+            if (end > start && sizeValue) {
+              this.quill.formatText(start, end - start, 'size', sizeValue, Quill.sources.USER);
             }
+            this.quill.format('header', headerValue, Quill.sources.USER);
+            if (end === start && sizeValue) {
+              // 空行没有文本可格式化，设置光标格式以影响后续输入
+              this.quill.format('size', sizeValue, Quill.sources.USER);
+            }
+          },
+          size(value: string | false) {
+            if (!this.quill.hasFocus()) this.quill.focus();
+            const range = this.quill.getSelection();
+            if (!range) return;
+            this.quill.format('size', value === false ? false : value, Quill.sources.USER);
           },
         },
       },
@@ -605,16 +752,17 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(({
           maxHeight: 540,
         }}
       >
-        <ReactQuill
-          ref={quillRef}
-          theme="snow"
-          value={value}
-          onChange={handleChange}
-          useSemanticHTML={false}
-          modules={modules}
-          style={{ minHeight: 0, marginBottom: 8 }}
-          placeholder="Design your Word template here..."
-        />
+        {fontsReady && (
+          <ReactQuill
+            ref={quillRef}
+            theme="snow"
+            value={value}
+            onChange={handleChange}
+            useSemanticHTML={false}
+            modules={modules}
+            style={{ minHeight: 0, marginBottom: 8 }}
+          />
+        )}
       </div>
 
       {/* 二维码插入/编辑弹窗 */}
