@@ -61,7 +61,7 @@ export class PluginTemplatePrintClient extends Plugin {
     });
 
     this.app.pluginSettingsManager.add('print-templates.fonts', {
-      title: '{{t("Font Settings")}}',
+      title: '{{t("General Settings")}}',
       Component: FontSettingsPage,
     });
 

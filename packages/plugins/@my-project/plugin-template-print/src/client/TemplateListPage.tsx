@@ -278,12 +278,19 @@ export const TemplateListPage: React.FC = () => {
           });
           message.success(t('Updated'));
         } else {
-          await apiClient.request({
+          const res = await apiClient.request({
             url: 'printTemplates:create',
             method: 'post',
             data: values,
           });
           message.success(t('Created'));
+          if (keepOpen) {
+            // 首次暂存后绑定主键，后续点击不再重复创建
+            const created = res?.data?.data;
+            if (created?.id) {
+              setEditingTemplate(created);
+            }
+          }
         }
         if (!keepOpen) {
           setModalVisible(false);
