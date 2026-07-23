@@ -11,7 +11,7 @@ import { Plugin } from '@nocobase/client';
 import { ExternalDataSourceSettingsForm } from './settings/ExternalDataSourceSettingsForm';
 import { CollectionsSyncAction } from './components/CollectionsSyncAction';
 import { ExternalDeleteCollection } from './components/ExternalDeleteCollection';
-import { collectionTableSchema } from '@nocobase/plugin-data-source-manager/src/client/component/CollectionsManager/schema/collections';
+import { collectionTableSchema } from '@nocobase/plugin-data-source-manager/client/component/CollectionsManager/schema/collections';
 
 const EXTERNAL_TYPES = ['postgres', 'mysql'];
 
