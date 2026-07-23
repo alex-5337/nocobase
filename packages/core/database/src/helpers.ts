@@ -97,6 +97,111 @@ function getPoolOptions(): PoolOptions {
   return options;
 }
 
+function extractReplicationOptionsFromEnv() {
+  // Prefer full JSON config via DB_REPLICATION
+  const replicationJson = getEnvValue('DB_REPLICATION');
+  if (replicationJson) {
+    try {
+      return JSON.parse(replicationJson);
+    } catch (e) {
+      console.error('Failed to parse DB_REPLICATION as JSON:', e);
+      return null;
+    }
+  }
+
+  // Build from individual DB_REPLICA_READ_* env vars
+  const readHosts = getEnvValue('DB_REPLICA_READ_HOST');
+  if (!readHosts) {
+    return null;
+  }
+
+  const hosts = readHosts
+    .split(',')
+    .map((h) => h.trim())
+    .filter(Boolean);
+  if (hosts.length === 0) {
+    return null;
+  }
+
+  const portsStr = getEnvValue('DB_REPLICA_READ_PORT', '');
+  const ports = portsStr
+    ? portsStr
+        .split(',')
+        .map((p) => parseInt(p.trim(), 10))
+        .filter((n) => !isNaN(n))
+    : [];
+
+  const usersStr = getEnvValue('DB_REPLICA_READ_USER', '');
+  const users = usersStr
+    ? usersStr
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean)
+    : [];
+
+  const passwordsStr = getEnvValue('DB_REPLICA_READ_PASSWORD', '');
+  const passwords = passwordsStr
+    ? passwordsStr
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [];
+
+  const databasesStr = getEnvValue('DB_REPLICA_READ_DATABASE', '');
+  const databases = databasesStr
+    ? databasesStr
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean)
+    : [];
+
+  const defaultPort = getEnvValue('DB_PORT');
+  const defaultUser = getEnvValue('DB_USER');
+  const defaultPassword = getEnvValue('DB_PASSWORD');
+  const defaultDatabase = getEnvValue('DB_DATABASE');
+
+  const read = hosts.map((host, index) => {
+    const config: Record<string, any> = { host };
+
+    if (ports[index]) {
+      config.port = ports[index];
+    } else if (defaultPort) {
+      config.port = parseInt(defaultPort, 10);
+    }
+
+    if (users[index]) {
+      config.username = users[index];
+    } else if (defaultUser) {
+      config.username = defaultUser;
+    }
+
+    if (passwords[index]) {
+      config.password = passwords[index];
+    } else if (defaultPassword) {
+      config.password = defaultPassword;
+    }
+
+    if (databases[index]) {
+      config.database = databases[index];
+    } else if (defaultDatabase) {
+      config.database = defaultDatabase;
+    }
+
+    return config;
+  });
+
+  const write: Record<string, any> = {
+    host: getEnvValue('DB_HOST') || 'localhost',
+  };
+
+  if (defaultPort) write.port = parseInt(defaultPort, 10);
+  if (defaultUser) write.username = defaultUser;
+  if (defaultPassword) write.password = defaultPassword;
+  if (defaultDatabase) write.database = defaultDatabase;
+
+  return { read, write };
+}
+
 export async function parseDatabaseOptionsFromEnv(): Promise<IDatabaseOptions> {
   const databaseOptions: IDatabaseOptions = {
     logging: process.env.DB_LOGGING == 'on' ? customLogger : false,
@@ -119,6 +224,11 @@ export async function parseDatabaseOptionsFromEnv(): Promise<IDatabaseOptions> {
   if (Object.keys(sslOptions).length) {
     databaseOptions.dialectOptions = databaseOptions.dialectOptions || {};
     databaseOptions.dialectOptions['ssl'] = sslOptions;
+  }
+
+  const replicationOptions = extractReplicationOptionsFromEnv();
+  if (replicationOptions) {
+    databaseOptions.replication = replicationOptions;
   }
 
   return databaseOptions;

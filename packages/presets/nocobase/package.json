@@ -37,6 +37,7 @@
     "@nocobase/plugin-collection-tree": "2.1.20",
     "@nocobase/plugin-comments": "2.1.20",
     "@nocobase/plugin-custom-variables": "2.1.20",
+    "@nocobase/plugin-data-source-external": "2.1.20",
     "@nocobase/plugin-data-source-main": "2.1.20",
     "@nocobase/plugin-data-source-manager": "2.1.20",
     "@nocobase/plugin-data-visualization": "2.1.20",

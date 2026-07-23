@@ -250,15 +250,16 @@ export class Database extends EventEmitter implements AsyncEmitter {
 
     this.options = opts;
 
-    this.logger.debug(
-      `create database instance: ${safeJsonStringify(
-        // remove sensitive information
-        lodash.omit(this.options, ['storage', 'host', 'password']),
-      )}`,
-      {
-        databaseInstanceId: this.instanceId,
-      },
-    );
+    const logOptions = lodash.omit(this.options, ['storage', 'host', 'password']);
+    if (logOptions.replication) {
+      logOptions.replication = {
+        read: (logOptions.replication.read || []).map((r) => lodash.omit(r, ['host', 'password'])),
+        write: lodash.omit(logOptions.replication.write || {}, ['host', 'password']),
+      };
+    }
+    this.logger.debug(`create database instance: ${safeJsonStringify(logOptions)}`, {
+      databaseInstanceId: this.instanceId,
+    });
 
     const sequelizeOptions = this.sequelizeOptions(this.options);
     this.sequelize = new Sequelize(sequelizeOptions);
@@ -930,7 +931,15 @@ export class Database extends EventEmitter implements AsyncEmitter {
 
   closed() {
     // @ts-ignore
-    return this.sequelize.connectionManager.pool._draining;
+    const pool = this.sequelize.connectionManager.pool;
+    // In replication mode the pool is a { read, write } structure instead of a single Pool instance
+    // @ts-ignore
+    if (pool.read || pool.write) {
+      // @ts-ignore
+      return !!(pool.read?._draining || pool.write?._draining);
+    }
+    // @ts-ignore
+    return pool._draining;
   }
 
   async close() {

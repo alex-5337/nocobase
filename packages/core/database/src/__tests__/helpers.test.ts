@@ -36,5 +36,78 @@ describe('database helpers', () => {
         maxUses: Number.POSITIVE_INFINITY, // Default value
       });
     });
+
+    describe('replication options', () => {
+      const replicationEnvKeys = [
+        'DB_REPLICATION',
+        'DB_REPLICA_READ_HOST',
+        'DB_REPLICA_READ_PORT',
+        'DB_REPLICA_READ_USER',
+        'DB_REPLICA_READ_PASSWORD',
+        'DB_REPLICA_READ_DATABASE',
+      ];
+
+      afterEach(() => {
+        for (const key of replicationEnvKeys) {
+          delete process.env[key];
+        }
+      });
+
+      it('no replication env', async () => {
+        const options = await parseDatabaseOptionsFromEnv();
+        expect(options.replication).toBeUndefined();
+      });
+
+      it('full JSON config via DB_REPLICATION', async () => {
+        process.env.DB_REPLICATION = JSON.stringify({
+          read: [{ host: 'replica1', port: 5433 }],
+          write: { host: 'primary', port: 5432 },
+        });
+
+        const options = await parseDatabaseOptionsFromEnv();
+        expect(options.replication).toMatchObject({
+          read: [{ host: 'replica1', port: 5433 }],
+          write: { host: 'primary', port: 5432 },
+        });
+      });
+
+      it('invalid JSON in DB_REPLICATION', async () => {
+        process.env.DB_REPLICATION = '{invalid';
+
+        const options = await parseDatabaseOptionsFromEnv();
+        expect(options.replication).toBeUndefined();
+      });
+
+      it('read replicas with fallback to primary credentials', async () => {
+        process.env.DB_HOST = 'primary';
+        process.env.DB_PORT = '5432';
+        process.env.DB_USER = 'app';
+        process.env.DB_PASSWORD = 'secret';
+        process.env.DB_DATABASE = 'nocobase';
+        process.env.DB_REPLICA_READ_HOST = 'replica1,replica2';
+
+        const options = await parseDatabaseOptionsFromEnv();
+        expect(options.replication).toMatchObject({
+          read: [
+            { host: 'replica1', port: 5432, username: 'app', password: 'secret', database: 'nocobase' },
+            { host: 'replica2', port: 5432, username: 'app', password: 'secret', database: 'nocobase' },
+          ],
+          write: { host: 'primary', port: 5432, username: 'app', password: 'secret', database: 'nocobase' },
+        });
+      });
+
+      it('per-replica overrides by index', async () => {
+        process.env.DB_HOST = 'primary';
+        process.env.DB_REPLICA_READ_HOST = 'replica1,replica2';
+        process.env.DB_REPLICA_READ_PORT = '5433,5434';
+        process.env.DB_REPLICA_READ_USER = 'reader1,reader2';
+
+        const options = await parseDatabaseOptionsFromEnv();
+        expect(options.replication.read).toMatchObject([
+          { host: 'replica1', port: 5433, username: 'reader1' },
+          { host: 'replica2', port: 5434, username: 'reader2' },
+        ]);
+      });
+    });
   });
 });

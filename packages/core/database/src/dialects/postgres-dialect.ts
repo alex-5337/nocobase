@@ -22,6 +22,27 @@ export class PostgresDialect extends BaseDialect {
       options.hooks['afterConnect'] = [];
     }
 
+    // Map NocoBase SSL config (options.ssl.sslMode) to Sequelize dialectOptions.ssl
+    if (options.ssl?.sslMode && options.ssl.sslMode !== 'disable') {
+      const sslConfig: Record<string, any> = {};
+
+      if (options.ssl.sslMode === 'verify-ca' || options.ssl.sslMode === 'verify-full') {
+        sslConfig.rejectUnauthorized = true;
+        if (options.ssl.ca) sslConfig.ca = options.ssl.ca;
+        if (options.ssl.key) sslConfig.key = options.ssl.key;
+        if (options.ssl.cert) sslConfig.cert = options.ssl.cert;
+      } else {
+        // 'require' mode
+        sslConfig.require = true;
+        sslConfig.rejectUnauthorized = false;
+      }
+
+      options.dialectOptions = options.dialectOptions || {};
+      options.dialectOptions.ssl = sslConfig;
+    }
+
+    delete options.ssl;
+
     return options;
   }
 

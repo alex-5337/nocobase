@@ -26,6 +26,15 @@ export class MysqlDialect extends BaseDialect {
   }
 
   getSequelizeOptions(options: DatabaseOptions) {
+    // Map NocoBase SSL config (options.ssl.sslMode) to Sequelize dialectOptions.ssl
+    if (options.ssl?.sslMode && options.ssl.sslMode === 'require') {
+      options.dialectOptions = options.dialectOptions || {};
+      options.dialectOptions.ssl = options.dialectOptions.ssl || {};
+      options.dialectOptions.ssl.rejectUnauthorized = false;
+    }
+
+    delete options.ssl;
+
     const dialectOptions: mysql.ConnectionOptions = {
       ...(options.dialectOptions || {}),
       multipleStatements: true,

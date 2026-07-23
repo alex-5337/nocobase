@@ -1,0 +1,36 @@
+{
+  "name": "@nocobase/plugin-data-source-external",
+  "version": "2.1.20",
+  "main": "./dist/server/index.js",
+  "keywords": [
+    "Data sources"
+  ],
+  "displayName": "Data Source: External Database",
+  "displayName.zh-CN": "数据源：外部数据库",
+  "description": "Connect to external PostgreSQL and MySQL databases as independent data sources.",
+  "description.zh-CN": "连接外部 PostgreSQL 和 MySQL 数据库作为独立数据源。",
+  "nocobase": {
+    "supportedVersions": [
+      "1.x",
+      "2.x"
+    ]
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.1.4",
+    "antd": "5.x",
+    "mysql2": "^3.11.0",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sequelize": "^6.35.0"
+  },
+  "peerDependencies": {
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/data-source-manager": "2.x",
+    "@nocobase/database": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/plugin-data-source-manager": "2.x",
+    "@nocobase/server": "2.x"
+  }
+}
