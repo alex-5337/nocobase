@@ -24,9 +24,10 @@ import _ from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm, useField } from '@formily/react';
+import { message } from 'antd';
 import PluginDatabaseConnectionsClient from '../';
 import { NAMESPACE } from '../locale';
-import { useLoadCollections } from '../hooks';
+import { useLoadCollections, useTestConnectionAction } from '../hooks';
 import { CollectionsTableField } from './CollectionsTableField';
 
 export const EditDatabaseConnectionAction = () => {
@@ -66,8 +67,12 @@ export const EditDatabaseConnectionAction = () => {
           dm.getDataSource(filterByTk).reload();
           await form.reset();
           refresh();
-        } catch (e) {
-          console.log(e);
+        } catch (error) {
+          if (error?.response?.data?.errors?.length) {
+            message.error(error.response.data.errors.map((e) => e.message).join(', '));
+          } else if (error?.message) {
+            message.error(error.message);
+          }
         } finally {
           field.data.loading = false;
         }
@@ -103,6 +108,7 @@ export const EditDatabaseConnectionAction = () => {
                           CollectionsTableField,
                           loadCollections,
                           from: 'edit',
+                          dialect: record.type,
                         }),
                       },
                       footer: {
@@ -143,7 +149,10 @@ export const EditDatabaseConnectionAction = () => {
             {t('Edit')}
           </a>
         )}
-        <SchemaComponent scope={{ createOnly: true, useUpdateAction, loadCollections }} schema={schema} />
+        <SchemaComponent
+          scope={{ createOnly: true, useUpdateAction, useTestConnectionAction, loadCollections }}
+          schema={schema}
+        />
       </ActionContext.Provider>
     </div>
   );

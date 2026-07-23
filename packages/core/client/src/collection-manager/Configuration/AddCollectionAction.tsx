@@ -11,7 +11,7 @@ import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { ArrayTable } from '@formily/antd-v5';
 import { ISchema, useField, useForm } from '@formily/react';
 import { uid } from '@formily/shared';
-import { Button, Dropdown, MenuProps } from 'antd';
+import { Button, Dropdown, MenuProps, message } from 'antd';
 import { cloneDeep } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -117,7 +117,9 @@ const useCreateCollection = (schema?: any) => {
       field.data = field.data || {};
       field.data.loading = true;
       try {
+        console.log('Create collection - Form values before submit:', form.values);
         await form.submit();
+        console.log('Create collection - Form values after submit:', form.values);
         const values = cloneDeep(form.values);
         if (schema?.events?.beforeSubmit) {
           schema.events.beforeSubmit(values);
@@ -126,19 +128,34 @@ const useCreateCollection = (schema?: any) => {
           delete values.reverseField;
         }
         delete values.autoCreateReverseField;
-        await resource.create({
+        // 确保有 targetKey，默认为 'id'
+        if (!values.targetKey) {
+          values.targetKey = 'id';
+        }
+        console.log('Create collection - Submitting values:', values);
+        const res = await resource.create({
           values: {
             logging: true,
             ...values,
           },
         });
+        console.log('Create collection - Response:', res);
         ctx.setVisible(false);
         await form.reset();
         field.data.loading = false;
         refresh();
         await refreshCM();
       } catch (error) {
+        console.error('Create collection error:', error);
+        console.error('Error response:', error?.response?.data);
         field.data.loading = false;
+        if (error?.response?.data?.errors?.length) {
+          message.error(error.response.data.errors.map((e) => e.message).join(', '));
+        } else if (error?.response?.data?.message) {
+          message.error(error.response.data.message);
+        } else if (error?.message) {
+          message.error(error.message);
+        }
       }
     },
   };

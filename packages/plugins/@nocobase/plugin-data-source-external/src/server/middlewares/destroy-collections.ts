@@ -49,6 +49,16 @@ export async function destroyExternalCollections(ctx: Context, next: Next) {
       }
     }
 
+    // 级联删除该 collection 的字段记录。manager 的 dataSourcesCollections.afterDestroy
+    // 钩子不会级联删 fields，若不在此删除，collections 记录删除后 fields 会成为孤儿，
+    // 重启时 loadLocalData 会用孤儿字段造出无 title/tableName/filterTargetKey 的空壳
+    // collection（列表上的"幽灵行"），且因没有 collections 记录，UI 删除也清不掉。
+    // 放在 if/else 之外，使"有 collections 记录"和"仅残留 fields 的幽灵行"两种情况都能清理。
+    // 内存与集群同步由下方 removeCollection / removeDataSourceCollection 兜底。
+    await ctx.db.getRepository('dataSourcesFields').destroy({
+      filter: { collectionName, dataSourceKey },
+    });
+
     // Delete the database record if it exists
     const dataSourceCollectionRecord = await ctx.db.getRepository('dataSourcesCollections').findOne({
       filter: {

@@ -107,9 +107,9 @@ export function DataSourceForm(props: DataSourceFormProps) {
   }, [form, message, normalizeValues, notification, resource, t]);
 
   const handleSubmit = useCallback(async () => {
-    const values = normalizeValues(await form.validateFields());
     setSubmitting(true);
     try {
+      const values = normalizeValues(await form.validateFields());
       let response;
       if (props.mode === 'create') {
         response = await resource.create({ values });

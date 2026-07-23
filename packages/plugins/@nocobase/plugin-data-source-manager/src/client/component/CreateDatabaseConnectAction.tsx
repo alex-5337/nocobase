@@ -20,7 +20,7 @@ import {
   useActionContext,
   useResourceActionContext,
 } from '@nocobase/client';
-import { Button, Dropdown, Empty } from 'antd';
+import { Button, Dropdown, Empty, message } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PluginDatabaseConnectionsClient from '../';
@@ -55,6 +55,11 @@ const useCreateAction = (actionCallback?: (values: any) => void) => {
       } catch (error) {
         if (field.data) {
           field.data.loading = false;
+        }
+        if (error?.response?.data?.errors?.length) {
+          message.error(error.response.data.errors.map((e) => e.message).join(', '));
+        } else if (error?.message) {
+          message.error(error.message);
         }
       }
     },
@@ -117,6 +122,7 @@ export const CreateDatabaseConnectAction = () => {
                           CollectionsTableField,
                           loadCollections,
                           from: 'create',
+                          dialect: info.key,
                         }),
                       },
                       footer: {

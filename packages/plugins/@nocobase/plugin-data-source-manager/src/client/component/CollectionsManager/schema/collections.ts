@@ -104,7 +104,8 @@ export const getCollectionSchema = (dataSourceKey) => {
           collection: collection,
           dragSort: false,
           request: {
-            url: `dataSources/${dataSourceKey}/collections:list`,
+            resource: `dataSources/${dataSourceKey}/collections`,
+            action: 'list',
             params: {
               pageSize: 50,
               sort: 'sort',

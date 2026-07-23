@@ -27,6 +27,23 @@ export async function createExternalCollection(ctx: Context, next: Next) {
     return next();
   }
 
+  // 通过 UI 创建外部数据源的表时，前端表单只提交 name/title/targetKey/template 等，
+  // 不会带 tableName 与 filterTargetKey。而列表渲染（resourcers/data-sources-collections.ts）
+  // 直接展开 collection.options，缺失这两项会导致：
+  //   - filterTargetKey 为空 → CollectionTitle 显示"无主键"警告图标；
+  //   - tableName 为空 → 物理表名/编辑回显异常。
+  // main 数据源不依赖这两项持久化字段，故仅对外部数据源在持久化前补全：
+  // 物理表名默认等于 collection name（与 sync 建表所用表名一致），主键默认取 targetKey 或 'id'。
+  const values = ctx.action.params.values;
+  if (values && typeof values === 'object') {
+    if (!values.tableName && values.name) {
+      values.tableName = values.name;
+    }
+    if (!values.filterTargetKey) {
+      values.filterTargetKey = values.targetKey || 'id';
+    }
+  }
+
   // 先让默认 handler 完成记录创建（触发 afterSaveWithAssociations → defineCollection）
   await next();
 

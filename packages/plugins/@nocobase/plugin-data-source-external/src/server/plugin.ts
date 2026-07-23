@@ -15,6 +15,7 @@ import { destroyExternalCollections } from './middlewares/destroy-collections';
 import { waitDataSourceReady } from './middlewares/wait-data-source-ready';
 import { refreshExternalDataSource } from './middlewares/refresh-data-source';
 import { createExternalCollection } from './middlewares/create-collection';
+import { ensureFieldTargetKey } from './middlewares/ensure-field-target-key';
 
 export class PluginDataSourceExternalServer extends Plugin {
   async beforeLoad() {
@@ -29,6 +30,8 @@ export class PluginDataSourceExternalServer extends Plugin {
     });
 
     this.app.resourcer.use(ensureDialect, { tag: 'ensure-dialect', before: 'default' });
+    // 为外部数据源的 belongsTo 字段添加默认的 targetKey
+    this.app.resourcer.use(ensureFieldTargetKey, { tag: 'ensure-field-target-key', before: 'default' });
     // 以下中间件会接管外部数据源的相关请求，注册在 acl 之后以确保权限校验已执行
     this.app.resourcer.use(waitDataSourceReady, { tag: 'external-wait-data-source-ready', after: 'acl' });
     this.app.resourcer.use(refreshExternalDataSource, { tag: 'external-refresh-data-source', after: 'acl' });

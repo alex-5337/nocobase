@@ -55,8 +55,8 @@ export const useTestConnectionAction = () => {
   actionField.data = actionField.data || {};
   return {
     async run() {
-      await form.submit();
       try {
+        await form.submit();
         actionField.data.loading = true;
         await api.resource('dataSources').testConnection({
           values: {
@@ -67,7 +67,11 @@ export const useTestConnectionAction = () => {
         message.success(t('Connection successful', { ns: NAMESPACE }));
       } catch (error) {
         actionField.data.loading = false;
-        console.log(error);
+        if (error?.response?.data?.errors?.length) {
+          message.error(error.response.data.errors.map((e) => e.message).join(', '));
+        } else if (error?.message) {
+          message.error(error.message);
+        }
       }
     },
   };
