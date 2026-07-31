@@ -29,6 +29,19 @@ function extractFieldValue(data: Record<string, any>, fieldPath: string): any {
 }
 
 /**
+ * 替换纯文本中的 {fieldPath} 占位符为记录字段值。
+ * 用于 Excel 单元格文本渲染。
+ */
+function replaceTextPlaceholders(text: string, data: Record<string, any>): string {
+  return text.replace(/{([^}]+)}/g, (_match, fieldPath: string) => {
+    const trimmed = fieldPath.trim();
+    if (!trimmed) return _match;
+    const value = extractFieldValue(data, trimmed);
+    return value != null ? String(value) : '';
+  });
+}
+
+/**
  * 替换 HTML 模板中的 {fieldPath} 变量占位符。
  * 支持跨 HTML 标签内部的字段路径匹配。
  *
@@ -593,7 +606,10 @@ async function renderSpreadsheetGrid(config: any, records: Record<string, any>[]
           } else {
             // 非数组：显示文本+值
             const value = extractFieldValue(record, cell.fieldPath);
-            const displayVal = value != null ? value : cell.defaultValue ?? cell.text ?? '';
+            const displayVal =
+              value != null
+                ? value
+                : cell.defaultValue ?? (cell.text ? replaceTextPlaceholders(cell.text, record) : '');
             worksheet.getCell(outputRow, outputCol).value = displayVal;
             outputCol++;
           }
@@ -605,7 +621,7 @@ async function renderSpreadsheetGrid(config: any, records: Record<string, any>[]
           // 向下浮动：纵向展开
           const { values, text } = downwardFieldData[c];
           const textCell = worksheet.getCell(outputRow, outputCol);
-          textCell.value = text || (values[0] != null ? String(values[0]) : '');
+          textCell.value = text ? replaceTextPlaceholders(text, record) : values[0] != null ? String(values[0]) : '';
 
           for (let rr = 1; rr <= extraRows; rr++) {
             const targetCell = worksheet.getCell(outputRow + rr, outputCol);
@@ -626,11 +642,12 @@ async function renderSpreadsheetGrid(config: any, records: Record<string, any>[]
         }
 
         // 普通单元格（无浮动 或 无数组值）
-        let cellValue: any = cell.text ?? '';
+        let cellValue: any = cell.text ? replaceTextPlaceholders(cell.text, record) : '';
 
         if (cell.fieldPath) {
           const val = extractFieldValue(record, cell.fieldPath);
-          cellValue = val != null ? val : cell.defaultValue ?? cell.text ?? '';
+          cellValue =
+            val != null ? val : cell.defaultValue ?? (cell.text ? replaceTextPlaceholders(cell.text, record) : '');
         }
 
         // 如果当前行有向下扩展，普通单元格需要跨行合并
@@ -715,9 +732,11 @@ export class PluginTemplatePrintServer extends Plugin {
         }
 
         // 查询目标数据表记录
+        const targetCollection = ctx.db.getCollection(template.collectionName);
+        const filterTargetKey = targetCollection?.filterTargetKey || 'id';
         const targetRepo = ctx.db.getRepository(template.collectionName);
         const records = await targetRepo.find({
-          filter: { id: validRecordIds },
+          filter: { [Array.isArray(filterTargetKey) ? filterTargetKey[0] : filterTargetKey]: validRecordIds },
           appends: ctx.action.params.appends || [],
         });
 
@@ -742,7 +761,9 @@ export class PluginTemplatePrintServer extends Plugin {
           } else {
             // 单条记录：返回 .docx
             contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-            filename = `${template.name}_${plainRecords[0].id || 'document'}.docx`;
+            filename = `${template.name}_${
+              plainRecords[0][Array.isArray(filterTargetKey) ? filterTargetKey[0] : filterTargetKey] || 'document'
+            }.docx`;
           }
         } else {
           buffer = await renderExcel(template.content, plainRecords);

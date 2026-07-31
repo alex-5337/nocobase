@@ -58,11 +58,13 @@ export class PluginTemplatePrintClient extends Plugin {
     this.app.pluginSettingsManager.add('print-templates.list', {
       title: '{{t("Templates")}}',
       Component: TemplateListPage,
+      sort: 1,
     });
 
     this.app.pluginSettingsManager.add('print-templates.fonts', {
       title: '{{t("General Settings")}}',
       Component: FontSettingsPage,
+      sort: 2,
     });
 
     // ===== 操作初始化器注册 =====

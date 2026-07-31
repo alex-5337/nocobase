@@ -11,12 +11,12 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Button, Select, Input, Tooltip, Tag, Divider, Switch, Form, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-  PlusOutlined,
-  DeleteOutlined,
+  InsertRowBelowOutlined,
+  InsertRowRightOutlined,
+  DeleteRowOutlined,
+  DeleteColumnOutlined,
   ArrowDownOutlined,
   ArrowRightOutlined,
-  MinusOutlined,
-  ColumnHeightOutlined,
 } from '@ant-design/icons';
 import { CollectionFieldPicker } from './CollectionFieldPicker';
 import { useTranslation } from 'react-i18next';
@@ -154,11 +154,63 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
   const [rowCount, setRowCount] = useState(savedData?.rowCount || ROW_DEFAULT);
   const [cells, setCells] = useState<Record<string, SpreadsheetCell>>(savedData?.cells || {});
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  const [selectionAnchor, setSelectionAnchor] = useState<{ row: number; col: number } | null>(null);
   const [editingMode, setEditingMode] = useState(false); // 是否处于公式栏编辑状态
   const [editValue, setEditValue] = useState('');
 
   // 引用：用于公式栏自动聚焦
   const formulaInputRef = useRef<any>(null);
+
+  // ===== 多选范围计算 =====
+  const selectionRange = useMemo(() => {
+    if (!selectedCell || !selectionAnchor) return null;
+    return {
+      minRow: Math.min(selectedCell.row, selectionAnchor.row),
+      maxRow: Math.max(selectedCell.row, selectionAnchor.row),
+      minCol: Math.min(selectedCell.col, selectionAnchor.col),
+      maxCol: Math.max(selectedCell.col, selectionAnchor.col),
+    };
+  }, [selectedCell, selectionAnchor]);
+
+  const isMultiSelected = selectionRange
+    ? selectionRange.minRow !== selectionRange.maxRow || selectionRange.minCol !== selectionRange.maxCol
+    : false;
+
+  const selectedCellCount = selectionRange
+    ? (selectionRange.maxRow - selectionRange.minRow + 1) * (selectionRange.maxCol - selectionRange.minCol + 1)
+    : 0;
+
+  const isInSelection = useCallback(
+    (r: number, c: number) => {
+      if (!selectionRange) return false;
+      return (
+        r >= selectionRange.minRow &&
+        r <= selectionRange.maxRow &&
+        c >= selectionRange.minCol &&
+        c <= selectionRange.maxCol
+      );
+    },
+    [selectionRange],
+  );
+
+  /** 批量设置选中区域内所有单元格的属性 */
+  const setCellsInRange = useCallback(
+    (updates: Partial<SpreadsheetCell>) => {
+      if (!selectionRange) return;
+      setCells((prev) => {
+        const next = { ...prev };
+        for (let r = selectionRange.minRow; r <= selectionRange.maxRow; r++) {
+          for (let c = selectionRange.minCol; c <= selectionRange.maxCol; c++) {
+            const key = cellKey(r, c);
+            const existing = next[key] || emptyCell();
+            next[key] = { ...existing, ...updates };
+          }
+        }
+        return next;
+      });
+    },
+    [selectionRange],
+  );
 
   // 通用公式选项
   const FORMULA_OPTIONS = useMemo<MenuProps['items']>(
@@ -218,50 +270,60 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
     setColCount((c) => Math.min(c + 1, 26));
   }, []);
 
-  const removeRow = useCallback(
-    (r: number) => {
-      if (rowCount <= ROW_MIN) return;
+  const removeRows = useCallback(
+    (minRow: number, maxRow: number) => {
+      const count = maxRow - minRow + 1;
+      if (rowCount - count < ROW_MIN) return;
       setCells((prev) => {
         const next = { ...prev };
-        for (let c = 0; c < colCount; c++) delete next[cellKey(r, c)];
+        // 删除目标行
+        for (let r = minRow; r <= maxRow; r++) {
+          for (let c = 0; c < colCount; c++) delete next[cellKey(r, c)];
+        }
         // 下面的行上移
-        for (let rr = r + 1; rr < rowCount; rr++) {
+        for (let rr = maxRow + 1; rr < rowCount; rr++) {
           for (let c = 0; c < colCount; c++) {
             const fromKey = cellKey(rr, c);
             if (next[fromKey]) {
-              next[cellKey(rr - 1, c)] = next[fromKey];
+              next[cellKey(rr - count, c)] = next[fromKey];
               delete next[fromKey];
             }
           }
         }
         return next;
       });
-      setRowCount((prev) => prev - 1);
+      setRowCount((prev) => prev - count);
       setSelectedCell(null);
+      setSelectionAnchor(null);
     },
     [colCount, rowCount],
   );
 
-  const removeCol = useCallback(
-    (c: number) => {
-      if (colCount <= COL_MIN) return;
+  const removeCols = useCallback(
+    (minCol: number, maxCol: number) => {
+      const count = maxCol - minCol + 1;
+      if (colCount - count < COL_MIN) return;
       setCells((prev) => {
         const next = { ...prev };
-        for (let r = 0; r < rowCount; r++) delete next[cellKey(r, c)];
+        // 删除目标列
+        for (let c = minCol; c <= maxCol; c++) {
+          for (let r = 0; r < rowCount; r++) delete next[cellKey(r, c)];
+        }
         // 右侧的列左移
         for (let rr = 0; rr < rowCount; rr++) {
-          for (let cc = c + 1; cc < colCount; cc++) {
+          for (let cc = maxCol + 1; cc < colCount; cc++) {
             const fromKey = cellKey(rr, cc);
             if (next[fromKey]) {
-              next[cellKey(rr, cc - 1)] = next[fromKey];
+              next[cellKey(rr, cc - count)] = next[fromKey];
               delete next[fromKey];
             }
           }
         }
         return next;
       });
-      setColCount((prev) => prev - 1);
+      setColCount((prev) => prev - count);
       setSelectedCell(null);
+      setSelectionAnchor(null);
     },
     [rowCount, colCount],
   );
@@ -294,7 +356,7 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
     <div>
       {/* ===== 说明行 ===== */}
       <div style={{ marginBottom: 8, color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span>{t('Click cell to select, edit in formula bar below')}</span>
+        <span>{t('Click cell to select, Shift+Click for range select')}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <Tag color="#1677ff" style={{ lineHeight: '16px', fontSize: 10, margin: 0 }}>
             ↓
@@ -323,24 +385,74 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
           border: '1px solid #e8e8e8',
         }}
       >
-        {/* 行列操作 */}
-        <Button size="small" icon={<PlusOutlined />} onClick={addRow}>
-          {t('Row')}
+        {/* 行操作 */}
+        <Button size="small" icon={<InsertRowBelowOutlined />} onClick={addRow}>
+          {t('Add Row')}
         </Button>
-        <Button size="small" icon={<ColumnHeightOutlined />} onClick={addCol}>
-          {t('Column')}
-        </Button>
+        {selectedCell && selectedData && (
+          <Tooltip title={isMultiSelected && selectionRange ? t('Delete selected rows') : t('Delete Row')}>
+            <Button
+              size="small"
+              danger
+              icon={<DeleteRowOutlined />}
+              disabled={rowCount - (selectionRange ? selectionRange.maxRow - selectionRange.minRow + 1 : 1) < ROW_MIN}
+              onClick={() => {
+                if (selectionRange) {
+                  removeRows(selectionRange.minRow, selectionRange.maxRow);
+                } else if (selectedCell) {
+                  removeRows(selectedCell.row, selectedCell.row);
+                }
+              }}
+            >
+              {t('Row')}
+            </Button>
+          </Tooltip>
+        )}
+
         <Divider type="vertical" />
 
-        {/* 选中单元格 - 格式 + 删除行列 */}
+        {/* 列操作 */}
+        <Button size="small" icon={<InsertRowRightOutlined />} onClick={addCol}>
+          {t('Add Column')}
+        </Button>
+        {selectedCell && selectedData && (
+          <Tooltip title={isMultiSelected && selectionRange ? t('Delete selected columns') : t('Delete Column')}>
+            <Button
+              size="small"
+              danger
+              icon={<DeleteColumnOutlined />}
+              disabled={colCount - (selectionRange ? selectionRange.maxCol - selectionRange.minCol + 1 : 1) < COL_MIN}
+              onClick={() => {
+                if (selectionRange) {
+                  removeCols(selectionRange.minCol, selectionRange.maxCol);
+                } else if (selectedCell) {
+                  removeCols(selectedCell.col, selectedCell.col);
+                }
+              }}
+            >
+              {t('Column')}
+            </Button>
+          </Tooltip>
+        )}
+
+        <Divider type="vertical" />
+
+        {/* 选中单元格 - 格式 */}
         {selectedCell && selectedData && (
           <>
+            {/* 多选提示 */}
+            {isMultiSelected && (
+              <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>
+                {selectedCellCount} {t('cells selected')}
+              </Tag>
+            )}
+
             {/* 浮动方向 */}
             <Select
               size="small"
               style={{ width: 100 }}
               value={selectedData.floatDirection}
-              onChange={(v) => setCell(selectedCell.row, selectedCell.col, { floatDirection: v })}
+              onChange={(v) => setCellsInRange({ floatDirection: v })}
               options={[
                 { label: t('No Float'), value: 'none' },
                 { label: `↓ ${t('Float Downward')}`, value: 'downward' },
@@ -353,38 +465,12 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
             <Switch
               size="small"
               checked={selectedData.isSequence}
-              onChange={(v) => setCell(selectedCell.row, selectedCell.col, { isSequence: v })}
+              onChange={(v) => setCellsInRange({ isSequence: v })}
             />
 
             {/* 加粗 */}
             <span style={{ fontSize: 12, color: '#666', whiteSpace: 'nowrap' }}>{t('Bold')}</span>
-            <Switch
-              size="small"
-              checked={selectedData.bold}
-              onChange={(v) => setCell(selectedCell.row, selectedCell.col, { bold: v })}
-            />
-
-            <Divider type="vertical" />
-
-            {/* 删除行列 */}
-            <Tooltip title={t('Delete Row')}>
-              <Button
-                size="small"
-                danger
-                icon={<MinusOutlined />}
-                disabled={rowCount <= ROW_MIN}
-                onClick={() => removeRow(selectedCell.row)}
-              />
-            </Tooltip>
-            <Tooltip title={t('Delete Column')}>
-              <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                disabled={colCount <= COL_MIN}
-                onClick={() => removeCol(selectedCell.col)}
-              />
-            </Tooltip>
+            <Switch size="small" checked={selectedData.bold} onChange={(v) => setCellsInRange({ bold: v })} />
           </>
         )}
       </div>
@@ -416,8 +502,11 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
               flexShrink: 0,
             }}
           >
-            {toColLabel(selectedCell.col)}
-            {selectedCell.row + 1}
+            {isMultiSelected && selectionRange
+              ? `${toColLabel(selectionRange.minCol)}${selectionRange.minRow + 1}:${toColLabel(selectionRange.maxCol)}${
+                  selectionRange.maxRow + 1
+                }`
+              : `${toColLabel(selectedCell.col)}${selectedCell.row + 1}`}
           </span>
           <Input
             ref={formulaInputRef}
@@ -490,6 +579,7 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
           borderRadius: 4,
           maxHeight: 420,
           background: '#fff',
+          outline: 'none',
         }}
       >
         <table
@@ -498,6 +588,14 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
             minWidth: (colCount + 1) * 110,
             tableLayout: 'fixed',
             width: '100%',
+            userSelect: 'none',
+            outline: 'none',
+          }}
+          tabIndex={-1}
+          onMouseDown={(e) => {
+            if (e.shiftKey) {
+              e.preventDefault();
+            }
           }}
         >
           {/* 列头 */}
@@ -575,12 +673,14 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
                 {/* 单元格 */}
                 {Array.from({ length: colCount }, (_, ci) => {
                   const cell = getCell(ri, ci);
-                  const isSel = selectedCell?.row === ri && selectedCell?.col === ci;
+                  const isActive = selectedCell?.row === ri && selectedCell?.col === ci;
+                  const inRange = isInSelection(ri, ci);
                   const hasFloat = cell.floatDirection !== 'none';
 
                   // 计算行背景
                   let bg = ri % 2 === 0 ? '#fff' : '#fafafa';
-                  if (isSel) bg = '#e6f4ff';
+                  if (isActive) bg = '#bae0ff';
+                  else if (inRange) bg = '#e6f4ff';
                   else if (hasFloat && cell.floatDirection === 'downward') bg = '#f0f9ff';
                   else if (hasFloat && cell.floatDirection === 'rightward') bg = '#f6ffed';
                   else if (cell.isSequence) bg = '#fffbe6';
@@ -588,11 +688,19 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
                   return (
                     <td
                       key={ci}
-                      onClick={() => {
-                        setSelectedCell({ row: ri, col: ci });
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (e.shiftKey && selectionAnchor) {
+                          // Shift+点击：扩展选区，不改变锚点
+                          setSelectedCell({ row: ri, col: ci });
+                        } else {
+                          // 普通点击：设置锚点和活动单元格
+                          setSelectedCell({ row: ri, col: ci });
+                          setSelectionAnchor({ row: ri, col: ci });
+                        }
                       }}
                       style={{
-                        border: isSel ? '2px solid #1677ff' : '1px solid #d4d4d4',
+                        border: isActive ? '2px solid #1677ff' : inRange ? '1px solid #91caff' : '1px solid #d4d4d4',
                         padding: 0,
                         background: bg,
                         cursor: 'pointer',
@@ -683,7 +791,7 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
             fontSize: 13,
           }}
         >
-          {t('Click cell to select, edit in formula bar below')}
+          {t('Click cell to select, Shift+Click for range select')}
         </div>
       )}
     </div>

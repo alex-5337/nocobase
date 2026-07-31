@@ -1,6 +1,7 @@
 {
   "Template Print": "模板打印",
   "Templates": "模板管理",
+  "General Settings": "常规设置",
   "New Template": "新建模板",
   "Edit Template": "编辑模板",
   "Name": "名称",
@@ -95,6 +96,10 @@
   "Click column header to edit": "点击列头编辑该列",
   "At least one column is required": "至少保留一列",
   "Click cell to select, edit in formula bar below": "点击单元格选中，在公式栏中编辑内容",
+  "Click cell to select, Shift+Click for range select": "点击选中单元格，Shift+点击选择区域",
+  "cells selected": "个单元格已选中",
+  "Delete selected rows": "删除选中的行",
+  "Delete selected columns": "删除选中的列",
   "Add Row": "添加行",
   "Add Column": "添加列",
   "Delete Row": "删除行",

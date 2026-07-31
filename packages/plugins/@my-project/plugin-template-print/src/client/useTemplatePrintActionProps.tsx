@@ -107,13 +107,13 @@ const TemplatePrintModal: React.FC<TemplatePrintModalProps> = ({
     setVisible(initialVisible);
   }, [initialVisible]);
 
-  // 加载已启用的模板列表
+  // 加载已启用的模板列表（按当前集合过滤）
   useEffect(() => {
     const loadTemplates = async () => {
       try {
         const res = await apiClient.request({
           url: 'printTemplates:list',
-          params: { filter: { enabled: true } },
+          params: { filter: { enabled: true, collectionName: collection?.name } },
         });
         setTemplates(res.data?.data || []);
       } catch {
@@ -121,7 +121,7 @@ const TemplatePrintModal: React.FC<TemplatePrintModalProps> = ({
       }
     };
     loadTemplates();
-  }, [apiClient, t]);
+  }, [apiClient, t, collection?.name]);
 
   /** 取消按钮 */
   const handleCancel = () => {

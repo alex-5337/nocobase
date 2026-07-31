@@ -54,7 +54,14 @@ PrintTemplateActionModel.registerFlow({
           url: 'printTemplates:list',
           params: { filter: { enabled: true } },
         });
-        const templates = templatesRes?.data?.data || [];
+        const allTemplates = templatesRes?.data?.data || [];
+
+        // 按当前数据块的集合过滤模板
+        const blockModel = ctx.model.context.blockModel;
+        const collectionName = blockModel.collection?.name;
+        const templates = collectionName
+          ? allTemplates.filter((tpl: any) => tpl.collectionName === collectionName)
+          : allTemplates;
 
         if (templates.length === 0) {
           message.warning(ctx.t('No templates available'));
@@ -62,7 +69,6 @@ PrintTemplateActionModel.registerFlow({
         }
 
         // 2. 获取当前数据块中的记录 ID
-        const blockModel = ctx.model.context.blockModel;
         let recordIds: number[];
 
         if (typeof blockModel.getCurrentRecord === 'function') {
@@ -74,16 +80,16 @@ PrintTemplateActionModel.registerFlow({
           recordIds = id != null ? [id].flat() : [];
         } else {
           // 表格块：优先选中行，回退到所有数据行
+          const primaryKey =
+            blockModel.collection?.getPrimaryKey?.() || blockModel.collection?.getFilterTargetKey?.() || 'id';
           const selectedRows = blockModel.resource.getSelectedRows?.() || [];
           if (selectedRows.length > 0) {
-            recordIds = selectedRows.map((r: any) => r.id);
+            recordIds = selectedRows.map((r: any) => r[primaryKey]);
           } else {
             const records = blockModel.resource.getData();
             if (Array.isArray(records)) {
-              recordIds = records.map((r: any) => r.id).filter((id: any) => id != null);
+              recordIds = records.map((r: any) => r[primaryKey]).filter((id: any) => id != null);
             } else {
-              const primaryKey =
-                blockModel.collection?.getPrimaryKey?.() || blockModel.collection?.getFilterTargetKey?.() || 'id';
               recordIds = records?.[primaryKey] != null ? [records[primaryKey]] : [];
             }
           }

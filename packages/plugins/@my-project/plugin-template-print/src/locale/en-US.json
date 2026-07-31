@@ -1,6 +1,7 @@
 {
   "Template Print": "Template Print",
   "Templates": "Templates",
+  "General Settings": "General Settings",
   "New Template": "New Template",
   "Edit Template": "Edit Template",
   "Name": "Name",
@@ -92,6 +93,10 @@
   "Click column header to edit": "Click column header to edit",
   "At least one column is required": "At least one column is required",
   "Click cell to select, edit in formula bar below": "Click cell to select, edit in formula bar below",
+  "Click cell to select, Shift+Click for range select": "Click to select, Shift+Click for range select",
+  "cells selected": "cells selected",
+  "Delete selected rows": "Delete selected rows",
+  "Delete selected columns": "Delete selected columns",
   "Add Row": "Add Row",
   "Add Column": "Add Column",
   "Delete Row": "Delete Row",
