@@ -11,16 +11,20 @@ import { Application, Plugin } from '@nocobase/client-v2';
 import { tExpr } from './locale';
 import { ExternalDataSourceSettingsForm } from './settings/ExternalDataSourceSettingsForm';
 
+type DataSourceManagerPlugin = {
+  registerType(name: string, options: Record<string, unknown>): void;
+};
+
 export class PluginDataSourceExternalClientV2 extends Plugin<any, Application> {
   async load() {
-    const dataSourceManager =
-      this.app.pm.get('@nocobase/plugin-data-source-manager') || this.app.pm.get('data-source-manager');
+    const dataSourceManager = (this.app.pm.get('@nocobase/plugin-data-source-manager') ||
+      this.app.pm.get('data-source-manager')) as DataSourceManagerPlugin | null;
 
     if (!dataSourceManager) {
       return;
     }
 
-    (dataSourceManager as any).registerType('postgres', {
+    dataSourceManager.registerType('postgres', {
       label: tExpr('PostgreSQL'),
       SettingsForm: ExternalDataSourceSettingsForm,
       defaultValues: {
@@ -33,7 +37,7 @@ export class PluginDataSourceExternalClientV2 extends Plugin<any, Application> {
       },
     });
 
-    (dataSourceManager as any).registerType('mysql', {
+    dataSourceManager.registerType('mysql', {
       label: tExpr('MySQL'),
       SettingsForm: ExternalDataSourceSettingsForm,
       defaultValues: {

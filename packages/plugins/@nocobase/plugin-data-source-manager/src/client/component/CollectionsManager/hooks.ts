@@ -10,13 +10,20 @@
 import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useAPIClient, useRecord, useResourceActionContext, useActionContext } from '@nocobase/client';
+import {
+  useAPIClient,
+  useDataSourceManager,
+  useRecord,
+  useResourceActionContext,
+  useActionContext,
+} from '@nocobase/client';
 
 export const useDestroyAction = () => {
   const { refresh } = useResourceActionContext();
   const { name: dataSourceKey } = useParams();
   const { name: filterByTk, collectionName } = useRecord();
   const api = useAPIClient();
+  const dm = useDataSourceManager();
   return {
     async run() {
       await api.request({
@@ -24,6 +31,7 @@ export const useDestroyAction = () => {
         method: 'post',
       });
       refresh();
+      await dm?.getDataSource(dataSourceKey)?.reload();
     },
   };
 };
@@ -35,6 +43,7 @@ export const useBulkDestroyAction = () => {
   const { name: dataSourceKey } = useParams();
   const api = useAPIClient();
   const { name } = useRecord();
+  const dm = useDataSourceManager();
   return {
     async run() {
       if (!state?.selectedRowKeys?.length) {
@@ -47,6 +56,7 @@ export const useBulkDestroyAction = () => {
       });
       setState?.({ selectedRowKeys: [] });
       refresh();
+      await dm?.getDataSource(dataSourceKey)?.reload();
     },
   };
 };
@@ -62,11 +72,9 @@ export const useBulkDestroyActionAndRefreshCM = () => {
 
 export const useDestroyActionAndRefreshCM = () => {
   const { run } = useDestroyAction();
-  // const { refreshCM } = useCollectionManager_deprecated();
   return {
     async run() {
       await run();
-      // await refreshCM();
     },
   };
 };

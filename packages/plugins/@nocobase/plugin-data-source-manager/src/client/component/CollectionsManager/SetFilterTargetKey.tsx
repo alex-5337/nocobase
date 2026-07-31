@@ -32,6 +32,9 @@ export const SetFilterTargetKey = (props) => {
     const fields = cm.getCollectionFields(record.name);
     return fields
       .filter((field) => {
+        if (field.primaryKey || field.unique) {
+          return true;
+        }
         if (!field.interface) {
           return false;
         }
@@ -44,7 +47,7 @@ export const SetFilterTargetKey = (props) => {
         return false;
       })
       .map((field) => ({
-        label: compile(field.uiSchema?.title),
+        label: compile(field.uiSchema?.title) || field.name,
         value: field.name,
       }));
   }, [app, compile, dataSourceKey, record.name]);
@@ -63,7 +66,6 @@ export const SetFilterTargetKey = (props) => {
       <Space.Compact style={{ marginTop: 5 }}>
         <Select
           onChange={(value, option: any) => {
-            console.log(value, option);
             setFilterTargetKey(value);
             setTitle(option.map((v) => v['label']).join(','));
           }}

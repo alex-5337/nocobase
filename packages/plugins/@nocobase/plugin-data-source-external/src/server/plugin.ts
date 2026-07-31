@@ -16,6 +16,7 @@ import { waitDataSourceReady } from './middlewares/wait-data-source-ready';
 import { refreshExternalDataSource } from './middlewares/refresh-data-source';
 import { createExternalCollection } from './middlewares/create-collection';
 import { ensureFieldTargetKey } from './middlewares/ensure-field-target-key';
+import { syncExternalField } from './middlewares/sync-field';
 
 export class PluginDataSourceExternalServer extends Plugin {
   async beforeLoad() {
@@ -38,6 +39,7 @@ export class PluginDataSourceExternalServer extends Plugin {
     this.app.resourcer.use(loadTablesAndPersist, { tag: 'external-load-tables', after: 'acl' });
     this.app.resourcer.use(destroyExternalCollections, { tag: 'external-destroy-collections', after: 'acl' });
     this.app.resourcer.use(createExternalCollection, { tag: 'external-create-collection', after: 'acl' });
+    this.app.resourcer.use(syncExternalField, { tag: 'external-sync-field', after: 'acl' });
   }
 }
 

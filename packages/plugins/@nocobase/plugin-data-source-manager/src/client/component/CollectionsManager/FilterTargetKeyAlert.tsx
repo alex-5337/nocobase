@@ -20,9 +20,15 @@ export const FilterTargetKeyAlert = ({ collectionName }) => {
     const cm = app.getCollectionManager(dataSourceKey);
     return cm.getCollection(collectionName);
   }, [app, dataSourceKey, collectionName]);
-  return (
-    !collection?.filterTargetKey && (
-      <Alert style={{ marginBottom: 16 }} type="warning" message={<SetFilterTargetKey />} />
-    )
-  );
+
+  const needsFilterTargetKey = useMemo(() => {
+    if (!collection) return false;
+    if (collection.filterTargetKey) return false;
+    if (collection.getPrimaryKey()) return false;
+    return true;
+  }, [collection]);
+
+  return needsFilterTargetKey ? (
+    <Alert style={{ marginBottom: 16 }} type="warning" message={<SetFilterTargetKey />} />
+  ) : null;
 };

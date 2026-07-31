@@ -123,7 +123,9 @@ function patchCreateActionForInherits(app: any) {
 
 export class PluginDataSourceExternalClient extends Plugin {
   async load() {
-    const dataSourceManager = this.app.pm.get('data-source-manager') as any;
+    const dataSourceManager = this.app.pm.get('data-source-manager') as {
+      registerType(name: string, options: Record<string, unknown>): void;
+    } | null;
     if (!dataSourceManager) {
       return;
     }

@@ -24,20 +24,28 @@ export class ExternalDataSource extends SequelizeDataSource {
   }
 
   createCollectionManager(options?: any) {
-    // factory.create 传入的 options 是扁平结构 { name, host, port, dialect, ... }
-    // 而非 { collectionManager: { ... } }，直接传给 SequelizeCollectionManager
-    // collectionsFilter 默认只返回 introspected:true 的 collection，
-    // 但通过 UI 创建的表不带 introspected 标记，需要显示所有已定义的 collection
-    return new SequelizeCollectionManager({
+    const cm = new SequelizeCollectionManager({
       ...(options?.collectionManager || options),
       collectionsFilter: () => true,
     });
+    // Database 构造函数会无条件定义 migrations collection 并创建 Umzug migrator，
+    // 外部数据源不需要 NocoBase 的迁移追踪，移除该 collection 及其 Sequelize model，
+    // 防止任何路径触发 model.sync() 在外部数据库中创建 migrations 表
+    cm.db.removeCollection('migrations');
+    return cm;
   }
 
   async load(options: any = {}) {
     const { localData } = options;
     if (localData) {
       for (const [name, collectionOptions] of Object.entries(localData) as [string, any][]) {
+        if (name === 'migrations') continue;
+        if (!collectionOptions.filterTargetKey && Array.isArray(collectionOptions.fields)) {
+          const pkField = collectionOptions.fields.find((f: any) => f.primaryKey);
+          if (pkField) {
+            collectionOptions.filterTargetKey = pkField.name;
+          }
+        }
         try {
           this.collectionManager.defineCollection({
             ...collectionOptions,
@@ -48,14 +56,33 @@ export class ExternalDataSource extends SequelizeDataSource {
         }
       }
     }
+
+    // 清理历史版本中 Database 实例自动创建的 migrations 系统表
+    await this.dropMigrationsTable();
+  }
+
+  private async dropMigrationsTable() {
+    try {
+      const db = this.collectionManager.db;
+      const tableName = `${db.options.tablePrefix || ''}migrations`;
+      const qi = db.sequelize.getQueryInterface();
+      const tables = await qi.showAllTables();
+      if (tables.some((t: string) => t.toLowerCase() === tableName.toLowerCase())) {
+        await qi.dropTable(tableName);
+        this.logger?.info?.(`Dropped NocoBase system table "${tableName}" from external database`);
+      }
+    } catch (e) {
+      this.logger?.warn?.(`Failed to drop migrations table: ${e.message}`);
+    }
   }
 
   async readTables() {
     const allTables = await this.introspector.getTableList();
     const viewList = await this.introspector.getViewList().catch(() => []);
 
-    // 与 main 的 readTables 逻辑一致：已加载的表不再出现在可选列表中
     const loadedNames = new Set(this.collectionManager.getCollections().map((collection) => collection.name));
+    // migrations 是 NocoBase Database 实例自动创建的系统表，不应作为用户可选数据表
+    loadedNames.add('migrations');
 
     const tables = allTables.filter((name: string) => !loadedNames.has(name)).map((name: string) => ({ name }));
     const views = viewList

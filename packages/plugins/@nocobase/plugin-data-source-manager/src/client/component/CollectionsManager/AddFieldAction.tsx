@@ -229,36 +229,39 @@ const AddFieldAction = (props) => {
   const fieldOptions = useFieldInterfaceOptions();
   const getFieldOptions = useCallback(() => {
     const { availableFieldInterfaces } = getTemplate(record.template) || {};
-    const { exclude, include } = availableFieldInterfaces || {};
+    const { exclude, include } = (availableFieldInterfaces || {}) as any;
     const optionArr = [];
     fieldOptions.forEach((v) => {
-      if (v.key === 'relation') {
+      if (v.key === 'systemInfo') {
+        optionArr.push({
+          ...v,
+          children: v.children.filter((child) => {
+            if (child.hidden) return false;
+            else if (child.value === 'tableoid') {
+              if (include?.length) return include.includes(child.value);
+              return currentDatabase?.dialect === 'postgres';
+            } else {
+              return typeof record[child.value] === 'boolean' ? record[child.value] : true;
+            }
+          }),
+        });
+      } else {
         let children = [];
         if (include?.length) {
           include.forEach((k) => {
-            const field = v?.children?.find((h) => [k, k.interface].includes(h.value));
-            field &&
-              children.push({
-                ...field,
-                targetScope: k?.targetScope,
-              });
+            const field = v?.children?.find((h) => [k, k.interface].includes(h.name));
+            field && children.push({ ...field, targetScope: k?.targetScope });
           });
         } else if (exclude?.length) {
-          children = v?.children?.filter((v) => {
-            return !exclude.includes(v.value);
-          });
+          children = v?.children?.filter((child) => !exclude.includes(child.name));
         } else {
           children = v?.children;
         }
-        children?.length &&
-          optionArr.push({
-            ...v,
-            children,
-          });
+        children?.length && optionArr.push({ ...v, children });
       }
     });
     return optionArr;
-  }, [getTemplate, record]);
+  }, [getTemplate, record, currentDatabase]);
   const items = useMemo<MenuProps['items']>(() => {
     return getFieldOptions()
       .map((option) => {

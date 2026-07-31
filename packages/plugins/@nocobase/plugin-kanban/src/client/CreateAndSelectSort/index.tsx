@@ -16,6 +16,7 @@ import {
   Select,
   useAPIClient,
   useCompile,
+  useDataSourceManager,
   useGlobalTheme,
 } from '@nocobase/client';
 import { Button, Space } from 'antd';
@@ -30,6 +31,7 @@ export const CreateAndSelectSort = (props: any) => {
   const field: any = useField();
   const compile = useCompile();
   const api = useAPIClient();
+  const dm = useDataSourceManager();
   const { t } = useTranslation();
   const { theme } = useGlobalTheme();
   const options = useContext(SchemaOptionsContext);
@@ -164,6 +166,7 @@ export const CreateAndSelectSort = (props: any) => {
       { ...result, value: result.name, label: compile(result['uiSchema']?.['title']) },
     ]);
     field.value = result.name;
+    await dm?.getDataSource(dataSource)?.reload();
   };
   return (
     <Space.Compact style={{ width: '100%' }}>

@@ -15,7 +15,9 @@ import { Button, Dropdown, MenuProps, message } from 'antd';
 import { cloneDeep } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { useRequest } from '../../api-client';
+import { useDataSourceManager } from '../../data-source/data-source/DataSourceManagerProvider';
 import { RecordProvider, useRecord } from '../../record-provider';
 import { ActionContextProvider, SchemaComponent, useActionContext, useCompile } from '../../schema-component';
 import { useResourceActionContext, useResourceContext } from '../ResourceActionProvider';
@@ -112,14 +114,14 @@ const useCreateCollection = (schema?: any) => {
   const { refresh } = useResourceActionContext();
   const { resource } = useResourceContext();
   const field = useField();
+  const dm = useDataSourceManager();
+  const { name: dataSourceKey } = useParams();
   return {
     async run() {
       field.data = field.data || {};
       field.data.loading = true;
       try {
-        console.log('Create collection - Form values before submit:', form.values);
         await form.submit();
-        console.log('Create collection - Form values after submit:', form.values);
         const values = cloneDeep(form.values);
         if (schema?.events?.beforeSubmit) {
           schema.events.beforeSubmit(values);
@@ -128,26 +130,24 @@ const useCreateCollection = (schema?: any) => {
           delete values.reverseField;
         }
         delete values.autoCreateReverseField;
-        // 确保有 targetKey，默认为 'id'
         if (!values.targetKey) {
           values.targetKey = 'id';
         }
-        console.log('Create collection - Submitting values:', values);
-        const res = await resource.create({
+        await resource.create({
           values: {
             logging: true,
             ...values,
           },
         });
-        console.log('Create collection - Response:', res);
         ctx.setVisible(false);
         await form.reset();
         field.data.loading = false;
         refresh();
+        if (dataSourceKey && dm?.getDataSource(dataSourceKey)) {
+          await dm.getDataSource(dataSourceKey).reload();
+        }
         await refreshCM();
       } catch (error) {
-        console.error('Create collection error:', error);
-        console.error('Error response:', error?.response?.data);
         field.data.loading = false;
         if (error?.response?.data?.errors?.length) {
           message.error(error.response.data.errors.map((e) => e.message).join(', '));

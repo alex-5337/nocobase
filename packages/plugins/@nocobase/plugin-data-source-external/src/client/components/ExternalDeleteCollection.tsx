@@ -17,21 +17,24 @@ import { useTranslation } from 'react-i18next';
 import {
   useActionContext,
   useAPIClient,
-  useCollectionManager_deprecated,
+  useDataSourceManager,
   useResourceActionContext,
-  RecordProvider,
-  useRecord,
+  useSchemaComponentContext,
+  CollectionRecordProvider,
+  useCollectionRecordData,
   ActionContextProvider,
   SchemaComponent,
   useCancelAction,
 } from '@nocobase/client';
 
-const useDestroyActionWithKeepTable = () => {
+const useDestroyCollectionAction = () => {
   const api = useAPIClient();
   const { refresh, defaultRequest } = useResourceActionContext();
   const { name: dataSourceKey } = useParams<{ name: string }>();
-  const record = useRecord();
+  const record = useCollectionRecordData();
   const form = useForm();
+  const { refresh: refreshSchema } = useSchemaComponentContext();
+  const dm = useDataSourceManager();
   const { cascade, keepTable } = form?.values || {};
   return {
     async run() {
@@ -42,28 +45,22 @@ const useDestroyActionWithKeepTable = () => {
         keepTable,
       });
       refresh();
+      await dm?.getDataSource(dataSourceKey)?.reload();
+      await dm?.getDataSource('main')?.reload();
+      refreshSchema();
     },
   };
 };
 
-const useDestroyActionAndRefreshCM = () => {
-  const { run } = useDestroyActionWithKeepTable();
-  const { refreshCM } = useCollectionManager_deprecated();
-  return {
-    async run() {
-      await run();
-      await refreshCM();
-    },
-  };
-};
-
-const useBulkDestroyActionWithKeepTable = () => {
+const useBulkDestroyCollectionAction = () => {
   const api = useAPIClient();
   const { state, setState, refresh, defaultRequest } = useResourceActionContext();
   const { name: dataSourceKey } = useParams<{ name: string }>();
   const ctx = useActionContext();
   const { t } = useTranslation('data-source-external');
   const form = useForm();
+  const { refresh: refreshSchema } = useSchemaComponentContext();
+  const dm = useDataSourceManager();
   const { cascade, keepTable } = form?.values || {};
   const selectedRowKeys = Object.values(state?.selectedRowKeys || state).flat();
   return {
@@ -81,17 +78,9 @@ const useBulkDestroyActionWithKeepTable = () => {
       ctx?.setVisible?.(false);
       setState?.({});
       refresh();
-    },
-  };
-};
-
-const useBulkDestroyActionAndRefreshCM = () => {
-  const { run } = useBulkDestroyActionWithKeepTable();
-  const { refreshCM } = useCollectionManager_deprecated();
-  return {
-    async run() {
-      await run();
-      await refreshCM();
+      await dm?.getDataSource(dataSourceKey)?.reload();
+      await dm?.getDataSource('main')?.reload();
+      refreshSchema();
     },
   };
 };
@@ -103,13 +92,12 @@ export const DeleteExternalCollectionAction = (props) => {
 
   const getDestroyCollectionAction = () => {
     if (isBulk) {
-      return useBulkDestroyActionAndRefreshCM;
-    } else {
-      if (useAction) {
-        return useAction;
-      }
-      return useDestroyActionAndRefreshCM;
+      return useBulkDestroyCollectionAction;
     }
+    if (useAction) {
+      return useAction;
+    }
+    return useDestroyCollectionAction;
   };
 
   const Title = () => {
@@ -122,7 +110,7 @@ export const DeleteExternalCollectionAction = (props) => {
   };
 
   return (
-    <RecordProvider record={record}>
+    <CollectionRecordProvider record={record}>
       <ActionContextProvider value={{ visible, setVisible }}>
         {isBulk ? (
           <Button icon={<DeleteOutlined />} onClick={() => setVisible(true)}>
@@ -215,11 +203,11 @@ export const DeleteExternalCollectionAction = (props) => {
           }}
         />
       </ActionContextProvider>
-    </RecordProvider>
+    </CollectionRecordProvider>
   );
 };
 
 export const ExternalDeleteCollection = (props) => {
-  const record = useRecord();
+  const record = useCollectionRecordData();
   return <DeleteExternalCollectionAction item={record} {...props} />;
 };
