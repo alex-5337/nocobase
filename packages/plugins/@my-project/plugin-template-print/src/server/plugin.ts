@@ -15,6 +15,7 @@ import ExcelJS from 'exceljs';
 import htmlDocx from 'html-docx-js/dist/html-docx';
 import JSZip from 'jszip';
 import QRCode from 'qrcode';
+import { applyPageDecorationsToDocx, PageDecorationSettings } from './word-decorations';
 
 /**
  * 从数据对象中根据点分隔的字段路径提取值。
@@ -161,19 +162,262 @@ async function processQrcodes(html: string, data: Record<string, any>): Promise<
 }
 
 /**
- * 修复 Word 文档中表格边框样式。
- * 编辑器保存的 HTML 只有 DOM 结构和 CSS 类名，但没有实际的 CSS 规则。
- * Word 的 HTML 渲染器需要内联样式来正确显示表格边框。
- *
- * @param html - 原始模板 HTML
- * @returns 注入表格样式后的 HTML
+ * Word 导入 altChunk(HTML) 时的兼容默认排版。
+ * Word 的 HTML 导入器几乎不识别 <style> 块（仅解析内联 style 属性），
+ * 因此必须把这些样式内联到具体元素上，才能使 Word 中的排版与编辑器一致。
  */
-function fixTableBordersForWord(html: string): string {
-  return `<style>
-    table { border-collapse: collapse; border: none; width: 100% }
-    td, th { border: 1px solid #000; padding: 2px 5px; vertical-align: top }
-    th { background: #f0f0f0 }
-  </style>${html}`;
+// 注意：字体名使用单引号，避免与 style 属性的双引号冲突
+const WORD_BODY_FONT_FAMILY = "Helvetica, Arial, 'Microsoft YaHei', SimSun, sans-serif";
+const WORD_BODY_FONT_SIZE = '13px'; // Quill 编辑器默认字号
+const WORD_BODY_LINE_HEIGHT = 1.42; // Quill 编辑器默认行高（相对字号倍数）
+
+/**
+ * 计算与编辑器行高一致的固定行距值（pt）。
+ *
+ * 为什么用固定值：Word 的"多倍行距"基于字体度量（max_glyph_height + lineGap）动态计算
+ * （中文字体 lineGap ≈ 0.12 × 字号，单倍行距 ≈ 1.12 × 字号），与 CSS 无单位 line-height
+ * （相对字号，浏览器中行高 = 字号 × 1.42）机制完全不同。只有固定行距（Exactly）才能让
+ * Word 每行高度与浏览器一致（= 字号 × 1.42），从而保证分页位置与编辑器预览一致。
+ *
+ * 单位用 pt（Word 原生单位，HTML 导入按 96 DPI 换算：1pt = 4/3 px），避免 px 换算不确定。
+ */
+function getWordLineHeight(fontSize: string): string {
+  const px = cssLengthToPx(fontSize, 13);
+  const pt = (px * WORD_BODY_LINE_HEIGHT * 72) / 96;
+  return `${Math.round(pt * 10) / 10}pt`;
+}
+
+/** 块级元素的默认样式（保留元素已有样式，仅补齐缺失属性） */
+function getWordBlockStyle(fontSize = WORD_BODY_FONT_SIZE): Record<string, string> {
+  return {
+    'font-family': WORD_BODY_FONT_FAMILY,
+    'font-size': fontSize,
+    'line-height': getWordLineHeight(fontSize),
+    margin: '0',
+  };
+}
+
+/** 将 CSS 声明追加/合并到元素现有 style 中（已有属性优先，不覆盖用户样式） */
+function mergeCss(existing: string, added: Record<string, string>): string {
+  const map: Record<string, string> = {};
+  existing.split(';').forEach((decl) => {
+    const idx = decl.indexOf(':');
+    if (idx > 0) {
+      map[decl.slice(0, idx).trim()] = decl.slice(idx + 1).trim();
+    }
+  });
+  Object.entries(added).forEach(([key, value]) => {
+    if (!(key in map)) {
+      map[key] = value;
+    }
+  });
+  return Object.entries(map)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('; ');
+}
+
+/** Quill 对齐 class → text-align 值（Word 忽略 class，需转为内联样式） */
+const QUILL_ALIGN_CLASSES: Record<string, string> = {
+  'ql-align-center': 'center',
+  'ql-align-right': 'right',
+  'ql-align-justify': 'justify',
+};
+
+/** 将 CSS 长度（px/pt/em）转为 px 基准数值 */
+function cssLengthToPx(value: string, basePx: number): number {
+  const px = /([\d.]+)\s*px/i.exec(value);
+  if (px) {
+    return parseFloat(px[1]);
+  }
+  const pt = /([\d.]+)\s*pt/i.exec(value);
+  if (pt) {
+    return (parseFloat(pt[1]) * 4) / 3;
+  }
+  const em = /([\d.]+)\s*em/i.exec(value);
+  if (em) {
+    return parseFloat(em[1]) * basePx;
+  }
+  return basePx;
+}
+
+/** 扫描元素内容中最大的 font-size（px 基准），用于决定固定行距（避免截断大字号文字） */
+function findMaxFontSizePx(content: string, basePx: number): number {
+  let max = basePx;
+  // 排除引号，避免跨 style 属性/标签误匹配
+  const re = /font-size\s*:\s*([^;"']+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content))) {
+    const px = cssLengthToPx(m[1], basePx);
+    if (px > max) {
+      max = px;
+    }
+  }
+  return max;
+}
+
+/** 扫描元素内容中最大的行内图片高度（px），固定行距必须 ≥ 图片高度，否则 Word 会裁掉图片 */
+function findMaxImgHeightPx(content: string): number {
+  let max = 0;
+  const re = /<img\b[^>]*\bheight\s*:\s*([\d.]+)px/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content))) {
+    const px = parseFloat(m[1]);
+    if (px > max) {
+      max = px;
+    }
+  }
+  return max;
+}
+
+/** 给 HTML 中指定标签的开头标签内联样式（保留原属性） */
+function inlineStyleToTag(html: string, tagName: string, style: Record<string, string>): string {
+  const re = new RegExp(`(<${tagName}\\b[^>]*?)(/?)>`, 'gi');
+  return html.replace(re, (match: string, open: string, selfClose: string) => {
+    const toAdd = { ...style };
+    // 将 Quill 的 class 样式（对齐/缩进）转为内联，Word 才能识别
+    const classAttr = /\sclass="([^"]*)"/i.exec(open);
+    if (classAttr) {
+      const classNames = classAttr[1].split(/\s+/);
+      const align = classNames.find((c) => QUILL_ALIGN_CLASSES[c]);
+      if (align && !('text-align' in toAdd)) {
+        toAdd['text-align'] = QUILL_ALIGN_CLASSES[align];
+      }
+      const indentMatch = /^ql-indent-(\d)$/.exec(classNames.find((c) => /^ql-indent-\d$/.test(c)) || '');
+      if (indentMatch && !('padding-left' in toAdd)) {
+        toAdd['padding-left'] = `${parseInt(indentMatch[1], 10) * 3}em`;
+      }
+    }
+    const styleAttr = /\sstyle="([^"]*)"/i.exec(open);
+    if (styleAttr) {
+      const merged = mergeCss(styleAttr[1], toAdd);
+      return `${open.replace(/\sstyle="[^"]*"/i, ` style="${merged}"`)}${selfClose}>`;
+    }
+    const css = Object.entries(toAdd)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('; ');
+    return `${open} style="${css}"${selfClose}>`;
+  });
+}
+
+/**
+ * 给块级元素内联样式，并按"元素自身字号与内容内最大内容高度"计算固定行距。
+ * Quill 的字号是应用在行内 <span> 上（段落本身无字号），
+ * 若段落内 span 字号或图片高度大于段落默认字号，行高必须按较大值计算，
+ * 否则 Word 固定行距会截断文字或图片。
+ */
+function inlineBlockElement(html: string, tagName: string, style: Record<string, string>): string {
+  const re = new RegExp(`(<${tagName}\\b[^>]*)(>)([\\s\\S]*?)(</${tagName}>)`, 'gi');
+  return html.replace(re, (match: string, open: string, gt: string, content: string, close: string) => {
+    const styleAttr = /\sstyle="([^"]*)"/i.exec(open);
+    let fontSize = style['font-size'] || WORD_BODY_FONT_SIZE;
+    if (styleAttr) {
+      const fs = /(?:^|;)\s*font-size\s*:\s*([^;"']+)/i.exec(styleAttr[1]);
+      if (fs) {
+        fontSize = fs[1].trim();
+      }
+    }
+    const basePx = cssLengthToPx(fontSize, 13);
+    const maxFontPx = findMaxFontSizePx(content, basePx);
+    const imgPx = findMaxImgHeightPx(content);
+    // 行高 = max(内容最大字号 × 1.42, 图片高度)：与浏览器行盒一致（图片直接撑高行盒，不乘倍数）
+    const lineHeightPx = Math.max(maxFontPx * WORD_BODY_LINE_HEIGHT, imgPx);
+    const lineHeightPt = (lineHeightPx * 72) / 96;
+    const toAdd = { ...style, 'line-height': `${Math.round(lineHeightPt * 10) / 10}pt` };
+    // 将 Quill 的 class 样式（对齐/缩进）转为内联，Word 才能识别
+    const classAttr = /\sclass="([^"]*)"/i.exec(open);
+    if (classAttr) {
+      const classNames = classAttr[1].split(/\s+/);
+      const align = classNames.find((c) => QUILL_ALIGN_CLASSES[c]);
+      if (align && !('text-align' in toAdd)) {
+        toAdd['text-align'] = QUILL_ALIGN_CLASSES[align];
+      }
+      const indentMatch = /^ql-indent-(\d)$/.exec(classNames.find((c) => /^ql-indent-\d$/.test(c)) || '');
+      if (indentMatch && !('padding-left' in toAdd)) {
+        toAdd['padding-left'] = `${parseInt(indentMatch[1], 10) * 3}em`;
+      }
+    }
+    if (styleAttr) {
+      const merged = mergeCss(styleAttr[1], toAdd);
+      return `${open.replace(/\sstyle="[^"]*"/i, ` style="${merged}"`)}${gt}${content}${close}`;
+    }
+    const css = Object.entries(toAdd)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('; ');
+    return `${open} style="${css}"${gt}${content}${close}`;
+  });
+}
+
+/**
+ * 将模板 HTML 的样式内联化，使 Word（altChunk 导入）与编辑器预览排版一致。
+ * Word 的 HTML 导入器忽略 <style> 块，只认内联 style，因此：
+ * - 块级元素（p/div/li/h1-h6/blockquote）补齐默认字体、字号、行高、无段间距；
+ * - 表格/单元格补齐边框与内边距；
+ * - 已有内联样式（用户设置的）保留优先。
+ */
+function inlineWordStyles(html: string): string {
+  let out = html;
+  out = inlineStyleToTag(out, 'table', { 'border-collapse': 'collapse', border: 'none', width: '100%' });
+  // th/td 含内容（可能是大字号或图片），用 inlineBlockElement 计算行距
+  out = inlineBlockElement(out, 'th', {
+    border: '1px solid #000',
+    padding: '2px 5px',
+    'vertical-align': 'top',
+    background: '#f0f0f0',
+    ...getWordBlockStyle(),
+  });
+  out = inlineBlockElement(out, 'td', {
+    border: '1px solid #000',
+    padding: '2px 5px',
+    'vertical-align': 'top',
+    ...getWordBlockStyle(),
+  });
+  out = inlineBlockElement(out, 'p', getWordBlockStyle());
+  out = inlineBlockElement(out, 'div', getWordBlockStyle());
+  out = inlineBlockElement(out, 'li', getWordBlockStyle());
+  out = inlineBlockElement(out, 'blockquote', getWordBlockStyle());
+  // 标题字号与编辑器（Quill snow：13px 基数下的 em）一致
+  out = inlineBlockElement(out, 'h1', getWordBlockStyle('26px'));
+  out = inlineBlockElement(out, 'h2', getWordBlockStyle('19.5px'));
+  out = inlineBlockElement(out, 'h3', getWordBlockStyle('15px'));
+  out = inlineBlockElement(out, 'h4', getWordBlockStyle('13px'));
+  out = inlineBlockElement(out, 'h5', getWordBlockStyle('11px'));
+  out = inlineBlockElement(out, 'h6', getWordBlockStyle('9px'));
+  return out;
+}
+
+/**
+ * 将模板 HTML 包装为完整的、Word 可直接导入的 HTML 文档。
+ *
+ * 为什么需要 <body> margin：
+ * Word 通过 altChunk 导入 HTML 时，会把页面边距重置为默认值
+ * （html-docx-js 默认 1440 twips = 2.54cm = 1 英寸），并参考 HTML <body> 的 margin。
+ * 因此必须把页面设置中的边距写入 <body style="margin:...">，
+ * 使其与 docx 的 <w:pgMar> 一致，打印/打开的边距才能与页面设置相符。
+ *
+ * 单位换算：Word 以 96 DPI 渲染 HTML，1 px = 1440/96 = 15 twips。
+ *
+ * @param html - 模板 HTML（已替换变量、已处理二维码）
+ * @param margins - 页面边距（twips）
+ * @returns 完整 HTML 文档字符串
+ */
+function wrapHtmlAsWordDocument(
+  html: string,
+  margins: { top: number; bottom: number; left: number; right: number },
+): string {
+  const toPx = (twips: number) => Math.round(twips / 15);
+  const bodyStyle = mergeCss(
+    `margin:${toPx(margins.top)}px ${toPx(margins.right)}px ${toPx(margins.bottom)}px ${toPx(margins.left)}px`,
+    getWordBlockStyle(),
+  );
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+</head>
+<body style="${bodyStyle}">
+${inlineWordStyles(html)}
+</body>
+</html>`;
 }
 
 /** 纸张尺寸定义（单位为 twips，1 twip = 1/1440 英寸） */
@@ -265,9 +509,7 @@ async function applyPageSizeToDocx(
 async function renderWord(
   templateContent: string,
   records: Record<string, any>[],
-  pageSettings?: {
-    paperSize?: string;
-    orientation?: string;
+  pageSettings?: PageDecorationSettings & {
     margins?: { top?: number; bottom?: number; left?: number; right?: number };
   },
 ): Promise<Buffer> {
@@ -278,16 +520,25 @@ async function renderWord(
     right: pageSettings?.margins?.right ?? DEFAULT_PAGE_SETTINGS.margins.right,
   };
 
-  // 单条记录：直接生成 .docx
-  if (records.length === 1) {
-    let filledHtml = fixTableBordersForWord(replaceVariables(templateContent, records[0]));
-    filledHtml = await processQrcodes(filledHtml, records[0]);
-    const docxBlob = htmlDocx.asBlob(filledHtml, {
-      orientation: 'portrait',
+  /** 生成 docx 并注入页面尺寸 + 页眉页脚/背景图（变量按当前记录替换） */
+  const buildDocx = async (html: string, record: Record<string, any>): Promise<Buffer> => {
+    const docxBlob = htmlDocx.asBlob(html, {
+      orientation: pageSettings?.orientation || DEFAULT_PAGE_SETTINGS.orientation,
       margins,
     });
-    const docxBuffer = Buffer.from(await docxBlob.arrayBuffer());
-    return applyPageSizeToDocx(docxBuffer, pageSettings);
+    let buf = Buffer.from(await docxBlob.arrayBuffer());
+    buf = await applyPageSizeToDocx(buf, pageSettings);
+    return applyPageDecorationsToDocx(buf, pageSettings, getPageDimensions(pageSettings), (text) =>
+      replaceVariables(text, record),
+    );
+  };
+
+  // 单条记录：直接生成 .docx
+  if (records.length === 1) {
+    let filledHtml = replaceVariables(templateContent, records[0]);
+    filledHtml = await processQrcodes(filledHtml, records[0]);
+    filledHtml = wrapHtmlAsWordDocument(filledHtml, margins);
+    return buildDocx(filledHtml, records[0]);
   }
 
   // 多条记录：每条记录独立 .docx，打包为 ZIP
@@ -296,15 +547,10 @@ async function renderWord(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    let filledHtml = fixTableBordersForWord(replaceVariables(templateContent, record));
+    let filledHtml = replaceVariables(templateContent, record);
     filledHtml = await processQrcodes(filledHtml, record);
-    const docxBlob = htmlDocx.asBlob(filledHtml, {
-      orientation: 'portrait',
-      margins,
-    });
-    let buf = Buffer.from(await docxBlob.arrayBuffer());
-    buf = await applyPageSizeToDocx(buf, pageSettings);
-    buffers.push({ name: `record_${i + 1}.docx`, data: buf });
+    filledHtml = wrapHtmlAsWordDocument(filledHtml, margins);
+    buffers.push({ name: `record_${i + 1}.docx`, data: await buildDocx(filledHtml, record) });
   }
 
   const chunks: Buffer[] = [];

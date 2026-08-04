@@ -17,6 +17,8 @@ import {
   DeleteColumnOutlined,
   ArrowDownOutlined,
   ArrowRightOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
 } from '@ant-design/icons';
 import { CollectionFieldPicker } from './CollectionFieldPicker';
 import { useTranslation } from 'react-i18next';
@@ -157,6 +159,7 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
   const [selectionAnchor, setSelectionAnchor] = useState<{ row: number; col: number } | null>(null);
   const [editingMode, setEditingMode] = useState(false); // 是否处于公式栏编辑状态
   const [editValue, setEditValue] = useState('');
+  const [fullscreen, setFullscreen] = useState(false); // 全屏编辑状态
 
   // 引用：用于公式栏自动聚焦
   const formulaInputRef = useRef<any>(null);
@@ -353,9 +356,33 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
 
   // ===== 渲染 =====
   return (
-    <div>
+    <div
+      style={
+        fullscreen
+          ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1100,
+              background: '#fff',
+              padding: '16px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+            }
+          : undefined
+      }
+    >
       {/* ===== 说明行 ===== */}
-      <div style={{ marginBottom: 8, color: '#888', fontSize: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div
+        style={{
+          marginBottom: 8,
+          color: '#888',
+          fontSize: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexShrink: 0,
+        }}
+      >
         <span>{t('Click cell to select, Shift+Click for range select')}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <Tag color="#1677ff" style={{ lineHeight: '16px', fontSize: 10, margin: 0 }}>
@@ -383,6 +410,7 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
           alignItems: 'center',
           flexWrap: 'wrap',
           border: '1px solid #e8e8e8',
+          flexShrink: 0,
         }}
       >
         {/* 行操作 */}
@@ -473,6 +501,16 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
             <Switch size="small" checked={selectedData.bold} onChange={(v) => setCellsInRange({ bold: v })} />
           </>
         )}
+
+        {/* 全屏切换 */}
+        <div style={{ flex: 1 }} />
+        <Button
+          size="small"
+          icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+          onClick={() => setFullscreen((v) => !v)}
+        >
+          {fullscreen ? t('Exit Fullscreen') : t('Fullscreen')}
+        </Button>
       </div>
 
       {/* ===== 公式栏（统一编辑：常量、变量、公式） ===== */}
@@ -577,7 +615,9 @@ export const ExcelTemplateEditor: React.FC<Props> = ({ form }) => {
           overflow: 'auto',
           border: '1px solid #d9d9d9',
           borderRadius: 4,
-          maxHeight: 420,
+          maxHeight: fullscreen ? 'none' : 420,
+          flex: 1,
+          minHeight: 0,
           background: '#fff',
           outline: 'none',
         }}

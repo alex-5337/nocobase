@@ -72,12 +72,14 @@ export const FONT_SIZE_LABELS: Record<string, string> = {
 
 /**
  * Heading 级别 → 对应默认字号映射。
- * 与 WPS 一致：标题1=二号，标题2=三号，标题3=四号。
+ * 与 WPS 一致：标题1=二号，标题2=三号，标题3=四号，标题4=小四，标题5=五号。
  */
 export const HEADING_SIZE_MAP: Record<number, string> = {
   1: '22pt',
   2: '16pt',
   3: '14pt',
+  4: '12pt',
+  5: '10.5pt',
 };
 
 /**
@@ -93,15 +95,16 @@ export const LINE_HEIGHTS = ['1', '1.15', '1.5', '1.75', '2', '2.5', '3'];
 
 /**
  * 行间距工具栏图标 SVG。
- * 参考 WPS/Word 的行间距图标：左侧垂直双向箭头 + 右侧多行横线。
+ * 参考 WPS/Word 的行距图标：左侧垂直双向箭头 + 右侧多行横线。
+ * 尺寸与 Quill 官方图标一致（18×18、.ql-stroke 线条风格），snow 主题的悬停高亮同样生效。
  */
-export const LINE_HEIGHT_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
-  <path d="M6 3v18"/>
-  <path d="M3 6l3-3 3 3"/>
-  <path d="M3 18l3 3 3-3"/>
-  <path d="M14 7h7"/>
-  <path d="M14 12h7"/>
-  <path d="M14 17h7"/>
+export const LINE_HEIGHT_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+  <line class="ql-stroke" x1="2" y1="9" x2="5" y2="9"/>
+  <line class="ql-stroke" x1="6.5" y1="9" x2="16" y2="9"/>
+  <line class="ql-stroke" x1="6.5" y1="3.5" x2="16" y2="3.5"/>
+  <line class="ql-stroke" x1="6.5" y1="14.5" x2="16" y2="14.5"/>
+  <polyline class="ql-stroke" points="5 9 3.5 7.5 2 9"/>
+  <polyline class="ql-stroke" points="5 9 3.5 10.5 2 9"/>
 </svg>`;
 
 /**
