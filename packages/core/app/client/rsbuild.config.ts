@@ -114,6 +114,19 @@ export default defineConfig(({ command }) => {
   const hmrClientHost = process.env.RSPACK_HMR_CLIENT_HOST;
   const hmrClientPort = toNumber(process.env.RSPACK_HMR_CLIENT_PORT, clientPort);
   const workspaceAliases = getRsbuildBrowserAlias();
+  // 除 /api 外需要转发给应用服务器的路径前缀（逗号分隔，与网关 Gateway.addAppRoutePrefix 对应）
+  const extraAppRoutePrefixes = String(process.env.APP_SERVER_ROUTE_PREFIXES || '')
+    .split(',')
+    .map((prefix) => prefix.trim())
+    .filter(Boolean)
+    .map((prefix) => ensurePublicPath(prefix, prefix));
+  const extraAppRouteProxies = extraAppRoutePrefixes.reduce<Record<string, { target: string; changeOrigin: boolean }>>(
+    (memo, prefix) => {
+      memo[prefix] = { target: proxyTargetUrl, changeOrigin: true };
+      return memo;
+    },
+    {},
+  );
 
   return {
     plugins: [pluginReact(), pluginLess(), pluginNodePolyfill(), pluginSvgr()],
@@ -239,6 +252,7 @@ export default defineConfig(({ command }) => {
           },
           xfwd: true,
         },
+        ...extraAppRouteProxies,
       },
       historyApiFallback: {
         disableDotRule: true,

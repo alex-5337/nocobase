@@ -112,6 +112,27 @@ export class Gateway extends EventEmitter {
   private socketPath = getSocketPath();
   private v2IndexTemplateCache: { file: string; mtimeMs: number; html: string } | null = null;
   private terminating = false;
+  /**
+   * 除 API_BASE_PATH 外，需要转发给应用服务器处理的路径前缀（可由插件注册，如公开页面 /public/xxx）
+   */
+  private customAppRoutePrefixes: string[] = [];
+
+  addAppRoutePrefix(prefix: string) {
+    if (!this.customAppRoutePrefixes.includes(prefix)) {
+      this.customAppRoutePrefixes.push(prefix);
+    }
+  }
+
+  removeAppRoutePrefix(prefix: string) {
+    this.customAppRoutePrefixes = this.customAppRoutePrefixes.filter((item) => item !== prefix);
+  }
+
+  private isAppRoutePath(pathname: string) {
+    if (pathname.startsWith(process.env.API_BASE_PATH)) {
+      return true;
+    }
+    return this.customAppRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
+  }
 
   private getOriginalRequestUrl(req: IncomingMessage) {
     return ((req as any).originalUrl as string | undefined) || req.url;
@@ -494,7 +515,7 @@ export class Gateway extends EventEmitter {
       });
     }
 
-    if (!pathname.startsWith(process.env.API_BASE_PATH)) {
+    if (!this.isAppRoutePath(pathname)) {
       if (this.isV2Request(pathname)) {
         if (handleApp !== 'main') {
           const isProxy = await this.proxyRequestToSubApp(supervisor, handleApp, req, res);
