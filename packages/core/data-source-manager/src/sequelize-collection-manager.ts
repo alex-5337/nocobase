@@ -100,7 +100,7 @@ export class SequelizeCollectionManager implements ICollectionManager {
   }
 
   removeCollection(name: string) {
-    this.db.removeCollection(name);
+    return this.db.removeCollection(name);
   }
 
   getCollections() {
