@@ -375,13 +375,14 @@ function inlineWordStyles(html: string): string {
   out = inlineBlockElement(out, 'div', getWordBlockStyle());
   out = inlineBlockElement(out, 'li', getWordBlockStyle());
   out = inlineBlockElement(out, 'blockquote', getWordBlockStyle());
-  // 标题字号与编辑器（Quill snow：13px 基数下的 em）一致
-  out = inlineBlockElement(out, 'h1', getWordBlockStyle('26px'));
-  out = inlineBlockElement(out, 'h2', getWordBlockStyle('19.5px'));
-  out = inlineBlockElement(out, 'h3', getWordBlockStyle('15px'));
-  out = inlineBlockElement(out, 'h4', getWordBlockStyle('13px'));
-  out = inlineBlockElement(out, 'h5', getWordBlockStyle('11px'));
-  out = inlineBlockElement(out, 'h6', getWordBlockStyle('9px'));
+  // 标题后备字号与编辑器 HEADING_SIZE_MAP 一致（1pt = 4/3px）：
+  // h1=22pt、h2=18pt、h3=16pt、h4=15pt、h5=14pt，均不小于正文；h6 保持小于 h5 一级
+  out = inlineBlockElement(out, 'h1', getWordBlockStyle('29px'));
+  out = inlineBlockElement(out, 'h2', getWordBlockStyle('24px'));
+  out = inlineBlockElement(out, 'h3', getWordBlockStyle('21px'));
+  out = inlineBlockElement(out, 'h4', getWordBlockStyle('20px'));
+  out = inlineBlockElement(out, 'h5', getWordBlockStyle('19px'));
+  out = inlineBlockElement(out, 'h6', getWordBlockStyle('16px'));
   return out;
 }
 

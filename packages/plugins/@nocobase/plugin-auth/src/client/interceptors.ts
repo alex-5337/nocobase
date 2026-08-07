@@ -54,9 +54,13 @@ export function authCheckMiddleware({ app }: { app: Application }) {
     const errors = error?.response?.data?.errors;
     const firstError = Array.isArray(errors) ? errors[0] : null;
 
-    const state = app.router.state;
-    const { pathname, search } = state.location;
-    const basename = app.router.basename;
+    // 应用启动阶段（路由初始化前）内部 router 实例可能尚未创建，
+    // 此时访问 state/basename 会抛出 TypeError，需要先做就绪判断
+    const routerReady = !!app.router?.router;
+    const location = routerReady ? app.router.state.location : undefined;
+    const pathname = location?.pathname;
+    const search = location?.search || '';
+    const basename = routerReady ? app.router.basename : '/';
 
     if (newToken) {
       app.apiClient.auth.setToken(newToken);
@@ -80,18 +84,21 @@ export function authCheckMiddleware({ app }: { app: Application }) {
         throw error;
       }
 
-      const isSkippedAuthCheckRoute = app.router.isSkippedAuthCheckRoute(pathname);
-      if (isSkippedAuthCheckRoute) {
-        error.config.skipNotify = true;
-      }
+      // 路由未就绪时无法获取当前路径，也无法跳转，跳过重定向逻辑
+      if (routerReady) {
+        const isSkippedAuthCheckRoute = app.router.isSkippedAuthCheckRoute(pathname);
+        if (isSkippedAuthCheckRoute) {
+          error.config.skipNotify = true;
+        }
 
-      if (pathname !== app.getHref('signin') && !isSkippedAuthCheckRoute) {
-        const redirectPath = removeBasename(pathname, basename);
+        if (pathname !== app.getHref('signin') && !isSkippedAuthCheckRoute) {
+          const redirectPath = removeBasename(pathname, basename);
 
-        debouncedRedirect(() => {
-          app.apiClient.auth.setToken(null);
-          app.router.navigate(`/signin?redirect=${redirectPath}${search}`, { replace: true });
-        });
+          debouncedRedirect(() => {
+            app.apiClient.auth.setToken(null);
+            app.router.navigate(`/signin?redirect=${redirectPath}${search}`, { replace: true });
+          });
+        }
       }
     }
     throw error;

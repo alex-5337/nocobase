@@ -9,7 +9,7 @@
 
 /* istanbul ignore file -- @preserve */
 
-import { Database, IDatabaseOptions } from './database';
+import { Database, IDatabaseOptions, SSLMode, SSLOptions } from './database';
 import fs from 'fs';
 import { MysqlDialect } from './dialects/mysql-dialect';
 import { SqliteDialect } from './dialects/sqlite-dialect';
@@ -54,7 +54,7 @@ function getValueOrFileContent(envVarName) {
     });
 }
 
-function extractSSLOptionsFromEnv() {
+function extractSSLOptionsFromEnv(): Promise<SSLOptions | undefined> {
   return Promise.all([
     getValueOrFileContent('DB_DIALECT_OPTIONS_SSL_MODE'),
     getValueOrFileContent('DB_DIALECT_OPTIONS_SSL_CA'),
@@ -62,15 +62,17 @@ function extractSSLOptionsFromEnv() {
     getValueOrFileContent('DB_DIALECT_OPTIONS_SSL_CERT'),
     getValueOrFileContent('DB_DIALECT_OPTIONS_SSL_REJECT_UNAUTHORIZED'),
   ]).then(([mode, ca, key, cert, rejectUnauthorized]) => {
-    const sslOptions = {};
+    if (!mode && !ca && !key && !cert && !rejectUnauthorized) {
+      return undefined;
+    }
 
-    if (mode) sslOptions['mode'] = mode;
-    if (ca) sslOptions['ca'] = ca;
-    if (key) sslOptions['key'] = key;
-    if (cert) sslOptions['cert'] = cert;
-    if (rejectUnauthorized) sslOptions['rejectUnauthorized'] = rejectUnauthorized === 'true';
-
-    return sslOptions;
+    return {
+      sslMode: (mode || 'require') as SSLMode,
+      ...(ca ? { ca } : {}),
+      ...(key ? { key } : {}),
+      ...(cert ? { cert } : {}),
+      ...(rejectUnauthorized ? { rejectUnauthorized: rejectUnauthorized === 'true' } : {}),
+    };
   });
 }
 
@@ -221,9 +223,8 @@ export async function parseDatabaseOptionsFromEnv(): Promise<IDatabaseOptions> {
 
   const sslOptions = await extractSSLOptionsFromEnv();
 
-  if (Object.keys(sslOptions).length) {
-    databaseOptions.dialectOptions = databaseOptions.dialectOptions || {};
-    databaseOptions.dialectOptions['ssl'] = sslOptions;
+  if (sslOptions) {
+    databaseOptions.ssl = sslOptions;
   }
 
   const replicationOptions = extractReplicationOptionsFromEnv();

@@ -8,6 +8,7 @@
  */
 
 import semver from 'semver';
+import { ConnectionOptions as TLSConnectionOptions } from 'tls';
 import { BaseDialect } from './base-dialect';
 
 export class PostgresDialect extends BaseDialect {
@@ -23,19 +24,22 @@ export class PostgresDialect extends BaseDialect {
     }
 
     // Map NocoBase SSL config (options.ssl.sslMode) to Sequelize dialectOptions.ssl
-    if (options.ssl?.sslMode && options.ssl.sslMode !== 'disable') {
-      const sslConfig: Record<string, any> = {};
+    const ssl = options.ssl;
+    if (ssl?.sslMode && ssl.sslMode !== 'disable') {
+      const sslConfig: TLSConnectionOptions = {};
 
-      if (options.ssl.sslMode === 'verify-ca' || options.ssl.sslMode === 'verify-full') {
-        sslConfig.rejectUnauthorized = true;
-        if (options.ssl.ca) sslConfig.ca = options.ssl.ca;
-        if (options.ssl.key) sslConfig.key = options.ssl.key;
-        if (options.ssl.cert) sslConfig.cert = options.ssl.cert;
-      } else {
-        // 'require' mode
-        sslConfig.require = true;
-        sslConfig.rejectUnauthorized = false;
+      if (ssl.sslMode === 'verify-ca') {
+        // Verify the CA chain but skip hostname verification.
+        sslConfig.checkServerIdentity = () => undefined;
+      } else if (ssl.sslMode === 'verify-full') {
+        // Verify the CA chain and the hostname (pg always connects with the host as servername).
+        sslConfig.servername = options.host;
       }
+      // An explicit rejectUnauthorized always wins over the mode default.
+      sslConfig.rejectUnauthorized = ssl.rejectUnauthorized ?? ssl.sslMode !== 'require';
+      if (ssl.ca) sslConfig.ca = ssl.ca;
+      if (ssl.key) sslConfig.key = ssl.key;
+      if (ssl.cert) sslConfig.cert = ssl.cert;
 
       options.dialectOptions = options.dialectOptions || {};
       options.dialectOptions.ssl = sslConfig;
@@ -51,7 +55,7 @@ export class PostgresDialect extends BaseDialect {
       sql: 'select version() as version',
       get: (v: string) => {
         const m = /([\d+.]+)/.exec(v);
-        return semver.minVersion(m[0]).version;
+        return m ? semver.minVersion(m[0])?.version ?? m[0] : v;
       },
       version: '>=10',
     };

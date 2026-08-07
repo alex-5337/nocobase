@@ -4,8 +4,8 @@
   "main": "dist/server/index.js",
   "displayName": "Template Print",
   "displayName.zh-CN": "模板打印",
-  "description": "Design Word/Excel templates online and print data with them.",
-  "description.zh-CN": "在线设计 Word/Excel 模板，用数据填充并打印下载。",
+  "description": "Design Word/Excel print templates online (field placeholders, formulas, QR codes, headers/footers, background watermarks, custom fonts) and generate documents from NocoBase records.",
+  "description.zh-CN": "在线设计 Word/Excel 打印模板：字段占位、公式、二维码、页眉页脚、背景水印、自定义字体，并基于 NocoBase 数据一键生成下载文档。",
   "license": "Apache-2.0",
   "dependencies": {
     "archiver": "^5.3.1",

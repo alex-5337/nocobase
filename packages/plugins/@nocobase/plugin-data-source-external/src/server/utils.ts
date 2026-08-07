@@ -14,7 +14,9 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const LOADING_STATUSES = ['loading', 'reloading'];
 
 export async function waitForDataSourceReady(app: Application, dataSourceKey: string, maxAttempts = 60): Promise<void> {
-  const plugin = app.pm.get('data-source-manager') as { dataSourceStatus: Record<string, string> };
+  const plugin = app.pm.get('data-source-manager') as unknown as {
+    dataSourceStatus: Record<string, string>;
+  };
   for (let i = 0; i < maxAttempts; i++) {
     const status = plugin?.dataSourceStatus?.[dataSourceKey];
     if (!LOADING_STATUSES.includes(status)) {

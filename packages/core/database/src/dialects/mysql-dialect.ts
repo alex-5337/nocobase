@@ -19,7 +19,7 @@ export class MysqlDialect extends BaseDialect {
       sql: 'select version() as version',
       get: (v: string) => {
         const m = /([\d+.]+)/.exec(v);
-        return m[0];
+        return m?.[0] ?? v;
       },
       version: '>=8.0.17',
     };
@@ -27,10 +27,21 @@ export class MysqlDialect extends BaseDialect {
 
   getSequelizeOptions(options: DatabaseOptions) {
     // Map NocoBase SSL config (options.ssl.sslMode) to Sequelize dialectOptions.ssl
-    if (options.ssl?.sslMode && options.ssl.sslMode === 'require') {
-      options.dialectOptions = options.dialectOptions || {};
-      options.dialectOptions.ssl = options.dialectOptions.ssl || {};
-      options.dialectOptions.ssl.rejectUnauthorized = false;
+    const ssl = options.ssl;
+    if (ssl?.sslMode && ssl.sslMode !== 'disable') {
+      const dialectOptions: mysql.ConnectionOptions = (options.dialectOptions || {}) as mysql.ConnectionOptions;
+      const sslConfig: mysql.SslOptions = {
+        ...(typeof dialectOptions.ssl === 'object' && dialectOptions.ssl ? dialectOptions.ssl : {}),
+      };
+      // 'require' enables TLS without server certificate verification;
+      // 'verify-ca' / 'verify-full' verify the server certificate.
+      // An explicit rejectUnauthorized always wins over the mode default.
+      sslConfig.rejectUnauthorized = ssl.rejectUnauthorized ?? ssl.sslMode !== 'require';
+      if (ssl.ca) sslConfig.ca = ssl.ca;
+      if (ssl.key) sslConfig.key = ssl.key;
+      if (ssl.cert) sslConfig.cert = ssl.cert;
+      dialectOptions.ssl = sslConfig;
+      options.dialectOptions = dialectOptions;
     }
 
     delete options.ssl;

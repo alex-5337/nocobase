@@ -98,7 +98,17 @@ interface MapOf<T> {
   [key: string]: T;
 }
 
-export interface IDatabaseOptions extends Options {
+export type SSLMode = 'disable' | 'require' | 'verify-ca' | 'verify-full';
+
+export interface SSLOptions {
+  sslMode: SSLMode;
+  ca?: string;
+  key?: string;
+  cert?: string;
+  rejectUnauthorized?: boolean;
+}
+
+export interface IDatabaseOptions extends Omit<Options, 'ssl'> {
   tablePrefix?: string;
   migrator?: any;
   usingBigIntForId?: boolean;
@@ -108,6 +118,7 @@ export interface IDatabaseOptions extends Options {
   customHooks?: any;
   instanceId?: string;
   addAllCollections?: boolean;
+  ssl?: SSLOptions;
 }
 
 export type DatabaseOptions = IDatabaseOptions;
@@ -262,7 +273,9 @@ export class Database extends EventEmitter implements AsyncEmitter {
     });
 
     const sequelizeOptions = this.sequelizeOptions(this.options);
-    this.sequelize = new Sequelize(sequelizeOptions);
+    // SSL is mapped to dialectOptions.ssl by the dialect, so it must not be passed
+    // to Sequelize as the legacy `ssl` option (which expects a boolean).
+    this.sequelize = new Sequelize(lodash.omit(sequelizeOptions, ['ssl']));
 
     if (options.dialect === 'mysql') {
       this.wrapSequelizeRunForMySQL();

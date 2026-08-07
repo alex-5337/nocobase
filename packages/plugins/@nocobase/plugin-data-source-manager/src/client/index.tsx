@@ -16,6 +16,8 @@ const { DatabaseConnectionProvider } = lazy(() => import('./DatabaseConnectionPr
 
 import { ThirdDataSource } from './ThridDataSource';
 import { NAMESPACE } from './locale';
+
+export { collectionTableSchema } from './component/CollectionsManager/schema/collections';
 // import { BreadcumbTitle } from './component/BreadcumbTitle';
 const { BreadcumbTitle } = lazy(() => import('./component/BreadcumbTitle'), 'BreadcumbTitle');
 

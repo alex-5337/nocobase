@@ -12,7 +12,7 @@ import { Schema } from '@formily/react';
 import { ExternalDataSourceSettingsForm } from './settings/ExternalDataSourceSettingsForm';
 import { CollectionsSyncAction } from './components/CollectionsSyncAction';
 import { ExternalDeleteCollection } from './components/ExternalDeleteCollection';
-import { collectionTableSchema } from '@nocobase/plugin-data-source-manager/client/component/CollectionsManager/schema/collections';
+import { collectionTableSchema } from '@nocobase/plugin-data-source-manager/client';
 
 const EXTERNAL_TYPES = ['postgres', 'mysql'];
 

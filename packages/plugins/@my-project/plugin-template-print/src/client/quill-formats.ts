@@ -72,14 +72,15 @@ export const FONT_SIZE_LABELS: Record<string, string> = {
 
 /**
  * Heading 级别 → 对应默认字号映射。
- * 与 WPS 一致：标题1=二号，标题2=三号，标题3=四号，标题4=小四，标题5=五号。
+ * 所有标题字号均不小于正文（小四 12pt），逐级递减、层次分明：
+ * 标题1=二号，标题2=小二，标题3=三号，标题4=小三，标题5=四号。
  */
 export const HEADING_SIZE_MAP: Record<number, string> = {
   1: '22pt',
-  2: '16pt',
-  3: '14pt',
-  4: '12pt',
-  5: '10.5pt',
+  2: '18pt',
+  3: '16pt',
+  4: '15pt',
+  5: '14pt',
 };
 
 /**
