@@ -6645,7 +6645,7 @@
 
 "@napi-rs/canvas-win32-x64-msvc@0.1.92":
   version "0.1.92"
-  resolved "https://registry.npmjs.org/@napi-rs/canvas-win32-x64-msvc/-/canvas-win32-x64-msvc-0.1.92.tgz#0c11a92838e1c4dae376da5fa8c0e201c9bff3ec"
+  resolved "https://mirrors.cloud.tencent.com/npm/@napi-rs/canvas-win32-x64-msvc/-/canvas-win32-x64-msvc-0.1.92.tgz#0c11a92838e1c4dae376da5fa8c0e201c9bff3ec"
   integrity sha512-KEhyZLzq1MXCNlXybz4k25MJmHFp+uK1SIb8yJB0xfrQjz5aogAMhyseSzewo+XxAq3OAOdyKvfHGNzT3w1RPg==
 
 "@napi-rs/canvas@^0.1.88":
@@ -7745,7 +7745,7 @@
 
 "@rspack/binding-linux-arm64-musl@1.7.8":
   version "1.7.8"
-  resolved "https://registry.npmjs.org/@rspack/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.7.8.tgz#2b6d1618c1737dc634ad887b844640d1c8df6002"
+  resolved "https://mirrors.cloud.tencent.com/npm/@rspack/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.7.8.tgz#2b6d1618c1737dc634ad887b844640d1c8df6002"
   integrity sha512-m+uBi9mEVGkZ02PPOAYN2BSmmvc00XGa6v9CjV8qLpolpUXQIMzDNG+i1fD5SHp8LO+XWsZJOHypMsT0MzGTGw==
 
 "@rspack/binding-linux-x64-gnu@1.7.8":
@@ -26308,7 +26308,7 @@ pbkdf2@^3.1.2, pbkdf2@^3.1.5:
 
 pdf-oxide@^0.3.38:
   version "0.3.74"
-  resolved "https://registry.npmjs.org/pdf-oxide/-/pdf-oxide-0.3.74.tgz#650a2d49b8ba7dd4c709469fce93e305863bd99f"
+  resolved "https://mirrors.cloud.tencent.com/npm/pdf-oxide/-/pdf-oxide-0.3.74.tgz#650a2d49b8ba7dd4c709469fce93e305863bd99f"
   integrity sha512-zi1Rlg+T92kunDc8gPqQmnotO8RUpjvrhdbce/ydFxfXxz7lEtepn6Al3A+Kvq4hK2jiD/9zKjNEt1JNBksHzw==
   dependencies:
     async-mutex "^0.5.0"

@@ -1,0 +1,14 @@
+diff --git a/node_modules/pdf-oxide/package.json b/node_modules/pdf-oxide/package.json
+index 2b48198..937382c
+--- a/node_modules/pdf-oxide/package.json
++++ b/node_modules/pdf-oxide/package.json
+@@ -51,7 +51,8 @@
+   "exports": {
+     ".": {
+       "types": "./lib/index.d.ts",
+-      "import": "./lib/index.js"
++      "import": "./lib/index.js",
++      "default": "./lib/index.js"
+     },
+     "./builders": {
+       "types": "./lib/builders/index.d.ts",
