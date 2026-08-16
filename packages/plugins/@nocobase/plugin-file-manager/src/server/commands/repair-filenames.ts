@@ -348,3 +348,8 @@ export function registerRepairFilenamesCommand(app: Application) {
       }
     });
 }
+
+// 插件 command 文件要求默认导出 (app) => void，loadCommands 会加载并执行它
+export default function (app: Application) {
+  registerRepairFilenamesCommand(app);
+}

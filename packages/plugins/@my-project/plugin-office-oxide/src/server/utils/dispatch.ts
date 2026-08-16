@@ -10,6 +10,7 @@
 import fs from 'fs';
 import { MinerU } from 'mineru-open-sdk';
 import { Document, type DocumentFormat } from 'office-oxide';
+import { PdfDocument } from 'pdf-oxide';
 import { isMineruEnabledFor, loadToken, getOcrConfig, getBaseUrl } from './token-store';
 import { EXT_TO_CATEGORY, isImageExt, pkgName } from './file-utils';
 import { fixMergedCells } from './xlsx-merge-fix';
@@ -39,7 +40,6 @@ export async function dispatchConvert(
   }
 
   if (ext === '.pdf') {
-    const { PdfDocument } = await import('pdf-oxide');
     const doc = PdfDocument.open(filePath);
     try {
       if (outputFormat === 'html') {

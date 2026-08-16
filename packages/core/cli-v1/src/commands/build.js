@@ -50,5 +50,11 @@ module.exports = (cli) => {
         options.retry ? '--retry' : '',
       ]);
       buildIndexHtml(true);
+
+      // 全量构建后自动提取客户端资源到 storage/dist-client，
+      // 避免前端加载不到与当前版本匹配的资源而白屏
+      if (pkgs.length === 0) {
+        await run('nocobase-v1', ['client:extract']);
+      }
     });
 };

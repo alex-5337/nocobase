@@ -59,6 +59,43 @@ export function getDepPkgPath(dep: string, cwd: string) {
   }
 }
 
+/**
+ * 从 cwd 逐级向上查找 node_modules/<dep>/package.json。
+ * 用于 ESM-only 包：它们的 exports 没有 require/default 条件，
+ * require.resolve 会直接抛 ERR_PACKAGE_PATH_NOT_EXPORTED，无法靠常规方式定位。
+ */
+export function findDepDir(dep: string, cwd: string): string | null {
+  let dir = cwd;
+  for (;;) {
+    const candidate = path.join(dir, 'node_modules', ...dep.split('/'), 'package.json');
+    if (fs.existsSync(candidate)) {
+      return realpathSync(path.dirname(candidate));
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+}
+
+/**
+ * 从 package.json 的 exports['.']（或 module/main）中取出 ESM 入口文件相对路径
+ */
+export function getEsmEntryRel(pkg: Record<string, any>): string {
+  const pick = (cond: any): string | null => {
+    if (typeof cond === 'string') return cond;
+    if (!cond || typeof cond !== 'object') return null;
+    for (const key of ['import', 'default', 'require', 'node']) {
+      const value = pick(cond[key]);
+      if (value) return value;
+    }
+    return null;
+  };
+  const dot = pkg.exports && typeof pkg.exports === 'object' && !Array.isArray(pkg.exports) ? pkg.exports['.'] : null;
+  return pick(dot) || pkg.module || pkg.main || 'index.js';
+}
+
 interface IDepPkg {
   nccConfig: {
     minify: boolean;
@@ -70,6 +107,11 @@ interface IDepPkg {
   pkg: Record<string, any>;
   outputDir: string;
   mainFile: string;
+  /**
+   * ESM-only 依赖（exports 只有 import 条件）无法被 ncc 打包，
+   * 构建时改为原样复制到 dist/node_modules，见 buildServerDeps。
+   */
+  esmOnly: boolean;
 }
 
 export function getDepsConfig(cwd: string, outDir: string, depsName: string[], external: string[]) {
@@ -77,10 +119,29 @@ export function getDepsConfig(cwd: string, outDir: string, depsName: string[], e
 
   const depExternals = {};
   const deps = depsName.reduce<Record<string, IDepPkg>>((acc, packageName) => {
-    const depEntryPath = realpathSync(require.resolve(packageName, { paths: [cwd] }));
-    const depPkgPath = getDepPkgPath(packageName, cwd);
-    const depPkg = require(depPkgPath);
-    const depDir = path.dirname(depPkgPath);
+    let depEntryPath: string;
+    let depDir: string;
+    let depPkg: Record<string, any>;
+    let esmOnly = false;
+    try {
+      depEntryPath = realpathSync(require.resolve(packageName, { paths: [cwd] }));
+      const depPkgPath = getDepPkgPath(packageName, cwd);
+      depPkg = require(depPkgPath);
+      depDir = path.dirname(depPkgPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ERR_PACKAGE_PATH_NOT_EXPORTED') {
+        throw error;
+      }
+      // ESM-only 包：require.resolve 失败，改为手动定位包目录与 ESM 入口
+      const found = findDepDir(packageName, cwd);
+      if (!found) {
+        throw error;
+      }
+      esmOnly = true;
+      depDir = found;
+      depPkg = require(path.join(depDir, 'package.json'));
+      depEntryPath = realpathSync(path.join(depDir, getEsmEntryRel(depPkg)));
+    }
     const outputDir = path.join(outDir, packageName);
     const mainFile = path.join(outputDir, path.relative(depDir, depEntryPath));
     acc[depEntryPath] = {
@@ -94,6 +155,7 @@ export function getDepsConfig(cwd: string, outDir: string, depsName: string[], e
       pkg: depPkg,
       outputDir,
       mainFile,
+      esmOnly,
     }
 
     return acc;

@@ -491,8 +491,19 @@ function buildIndexHtml(force = false) {
   if (process.env.CDN_BASE_URL) {
     const appBaseUrl = process.env.CDN_BASE_URL.replace(/\/+$/, '');
     const appPublicPath = process.env.APP_PUBLIC_PATH.replace(/\/+$/, '');
-    const re1 = new RegExp(`src="${appPublicPath}/`, 'g');
-    const re2 = new RegExp(`href="${appPublicPath}/`, 'g');
+    // 先剥离残留的旧 CDN 版本前缀（如 /dist/<旧版本>/），保证版本升级后始终应用当前 CDN_BASE_URL，
+    // 而不是把新旧版本前缀叠加导致资源 404
+    const stripOldSrc = new RegExp(`src="${appPublicPath}/dist/[^/"]+/`, 'g');
+    const stripOldHref = new RegExp(`href="${appPublicPath}/dist/[^/"]+/`, 'g');
+    replacedData = replacedData
+      .replace(stripOldSrc, `src="${appPublicPath}/`)
+      .replace(stripOldHref, `href="${appPublicPath}/`)
+      // webpack public path 同步为当前 CDN_BASE_URL，避免残留旧版本字面量
+      .replace(/(__webpack_public_path__'\] = ')[^']*(')/, `$1${process.env.CDN_BASE_URL}$2`);
+    // 跳过已带当前 CDN 前缀的资源路径，避免重复替换导致路径翻倍（如 /dist/<version>/dist/<version>/）
+    const escapedBaseUrl = appBaseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re1 = new RegExp(`src="(?!${escapedBaseUrl}/)${appPublicPath}/`, 'g');
+    const re2 = new RegExp(`href="(?!${escapedBaseUrl}/)${appPublicPath}/`, 'g');
     replacedData = replacedData.replace(re1, `src="${appBaseUrl}/`).replace(re2, `href="${appBaseUrl}/`);
   }
   fs.writeFileSync(file, replacedData, 'utf-8');

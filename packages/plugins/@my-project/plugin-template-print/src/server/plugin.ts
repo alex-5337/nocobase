@@ -16,18 +16,21 @@ import htmlDocx from 'html-docx-js/dist/html-docx';
 import JSZip from 'jszip';
 import QRCode from 'qrcode';
 import { applyPageDecorationsToDocx, PageDecorationSettings } from './word-decorations';
-
-/**
- * 从数据对象中根据点分隔的字段路径提取值。
- * 例如 "user.profile.name" 会访问 data.user.profile.name。
- *
- * @param data - 数据对象
- * @param fieldPath - 点分隔的字段路径
- * @returns 提取到的字段值，不存在则返回 undefined
- */
-function extractFieldValue(data: Record<string, any>, fieldPath: string): any {
-  return fieldPath.split('.').reduce((obj, key) => (obj != null ? obj[key] : undefined), data);
-}
+import {
+  collectTemplateFieldPaths,
+  decodeQrcodeDesc,
+  expandRepeatTables,
+  extractFieldValue,
+  findRelationAppend,
+  formatDisplayValue,
+  getToManyRelationTableColumns,
+  replaceVariables,
+  stripTemporaryTags,
+  CollectionFieldsGetter,
+  PrintFieldOptions,
+  ReplaceVariablesOptions,
+  TableColumn,
+} from './word-variables';
 
 /**
  * 替换纯文本中的 {fieldPath} 占位符为记录字段值。
@@ -37,56 +40,20 @@ function replaceTextPlaceholders(text: string, data: Record<string, any>): strin
   return text.replace(/{([^}]+)}/g, (_match, fieldPath: string) => {
     const trimmed = fieldPath.trim();
     if (!trimmed) return _match;
-    const value = extractFieldValue(data, trimmed);
-    return value != null ? String(value) : '';
+    return formatDisplayValue(extractFieldValue(data, trimmed));
   });
 }
 
 /**
- * 替换 HTML 模板中的 {fieldPath} 变量占位符。
- * 支持跨 HTML 标签内部的字段路径匹配。
- *
- * @param html - 模板 HTML 字符串
- * @param data - 数据对象
- * @returns 替换后的 HTML 字符串
+ * 将提取的字段值转换为 Excel 单元格值。
+ * null/undefined → 空字符串；Date 原样保留（ExcelJS 支持）；
+ * 其他对象序列化为 JSON；字符串/数字/布尔等原样返回。
  */
-function replaceVariables(html: string, data: Record<string, any>): string {
-  // 第一轮：替换 {fieldPath} 格式的普通变量
-  const result = html.replace(/{([\s\S]*?)}/g, (_match, inner) => {
-    // 清除内部可能包含的 HTML 标签和大括号
-    const fieldPath = inner
-      .replace(/<[^>]*>/g, '')
-      .replace(/[{}]/g, '')
-      .trim();
-    if (!fieldPath) return _match;
-    const value = extractFieldValue(data, fieldPath);
-    return value != null ? String(value) : '';
-  });
-
-  return result;
-}
-
-/**
- * 从 SVG <desc> 文本中解码二维码配置。
- * 格式: qrcode:valueType:value:width:height
- *
- * @param descText - SVG <desc> 元素文本内容
- * @returns 解码后的配置对象，或 null
- */
-function decodeQrcodeDesc(
-  descText: string,
-): { valueType: string; value: string; width: number; height: number } | null {
-  if (!descText) return null;
-  const idx = descText.indexOf('qrcode:');
-  if (idx === -1) return null;
-  const parts = descText.slice(idx).split(':');
-  if (parts.length < 5) return null;
-  const width = parseInt(parts[parts.length - 2], 10);
-  const height = parseInt(parts[parts.length - 1], 10);
-  if (isNaN(width) || isNaN(height)) return null;
-  // 值可能包含冒号，所以将中间部分重新拼接
-  const value = parts.slice(2, -2).join(':');
-  return { valueType: parts[1], value, width, height };
+function toExcelCellValue(value: unknown): ExcelJS.CellValue {
+  if (value == null) return '';
+  if (value instanceof Date) return value;
+  if (typeof value === 'object') return JSON.stringify(value);
+  return value as ExcelJS.CellValue;
 }
 
 /**
@@ -129,9 +96,8 @@ async function processQrcodes(html: string, data: Record<string, any>): Promise<
 
     // 根据值类型确定二维码内容
     if (config.valueType === 'field') {
-      // 字段类型：从数据中直接查找
-      const val = extractFieldValue(data, config.value);
-      qrcodeValue = val != null ? String(val) : '';
+      // 字段类型：从数据中直接查找（数组/对象自动格式化为可读文本）
+      qrcodeValue = formatDisplayValue(extractFieldValue(data, config.value));
     } else {
       // 固定值：直接使用
       qrcodeValue = config.value;
@@ -272,7 +238,7 @@ function findMaxImgHeightPx(content: string): number {
 /** 给 HTML 中指定标签的开头标签内联样式（保留原属性） */
 function inlineStyleToTag(html: string, tagName: string, style: Record<string, string>): string {
   const re = new RegExp(`(<${tagName}\\b[^>]*?)(/?)>`, 'gi');
-  return html.replace(re, (match: string, open: string, selfClose: string) => {
+  return html.replace(re, (_match: string, open: string, selfClose: string) => {
     const toAdd = { ...style };
     // 将 Quill 的 class 样式（对齐/缩进）转为内联，Word 才能识别
     const classAttr = /\sclass="([^"]*)"/i.exec(open);
@@ -307,7 +273,7 @@ function inlineStyleToTag(html: string, tagName: string, style: Record<string, s
  */
 function inlineBlockElement(html: string, tagName: string, style: Record<string, string>): string {
   const re = new RegExp(`(<${tagName}\\b[^>]*)(>)([\\s\\S]*?)(</${tagName}>)`, 'gi');
-  return html.replace(re, (match: string, open: string, gt: string, content: string, close: string) => {
+  return html.replace(re, (_match: string, open: string, gt: string, content: string, close: string) => {
     const styleAttr = /\sstyle="([^"]*)"/i.exec(open);
     let fontSize = style['font-size'] || WORD_BODY_FONT_SIZE;
     if (styleAttr) {
@@ -505,6 +471,8 @@ async function applyPageSizeToDocx(
  *
  * @param templateContent - 模板 HTML 内容
  * @param records - 数据记录列表
+ * @param pageSettings - 页面设置（纸张/边距/页眉页脚等）
+ * @param variableOptions - 变量替换选项（提供 getTableColumns 时一对多字段渲染为表格）
  * @returns Word 文档或 ZIP 包的 Buffer
  */
 async function renderWord(
@@ -513,6 +481,7 @@ async function renderWord(
   pageSettings?: PageDecorationSettings & {
     margins?: { top?: number; bottom?: number; left?: number; right?: number };
   },
+  variableOptions?: ReplaceVariablesOptions,
 ): Promise<Buffer> {
   const margins = {
     top: pageSettings?.margins?.top ?? DEFAULT_PAGE_SETTINGS.margins.top,
@@ -520,6 +489,10 @@ async function renderWord(
     left: pageSettings?.margins?.left ?? DEFAULT_PAGE_SETTINGS.margins.left,
     right: pageSettings?.margins?.right ?? DEFAULT_PAGE_SETTINGS.margins.right,
   };
+
+  // 剥离 quill-table-better 残留的 <temporary> 暂存元素：
+  // 编辑器内其内容不可见，但 Word 打印时会被渲染并覆盖表格内容（如二维码被表格遮盖）。
+  const cleanContent = stripTemporaryTags(templateContent);
 
   /** 生成 docx 并注入页面尺寸 + 页眉页脚/背景图（变量按当前记录替换） */
   const buildDocx = async (html: string, record: Record<string, any>): Promise<Buffer> => {
@@ -536,10 +509,13 @@ async function renderWord(
 
   // 单条记录：直接生成 .docx
   if (records.length === 1) {
-    let filledHtml = replaceVariables(templateContent, records[0]);
-    filledHtml = await processQrcodes(filledHtml, records[0]);
+    const record = records[0];
+    // 先展开一对多可编辑表格（消费单元格中的 {items.xxx} 变量），再替换普通变量
+    let filledHtml = expandRepeatTables(cleanContent, record);
+    filledHtml = replaceVariables(filledHtml, record, variableOptions);
+    filledHtml = await processQrcodes(filledHtml, record);
     filledHtml = wrapHtmlAsWordDocument(filledHtml, margins);
-    return buildDocx(filledHtml, records[0]);
+    return buildDocx(filledHtml, record);
   }
 
   // 多条记录：每条记录独立 .docx，打包为 ZIP
@@ -548,7 +524,8 @@ async function renderWord(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    let filledHtml = replaceVariables(templateContent, record);
+    let filledHtml = expandRepeatTables(cleanContent, record);
+    filledHtml = replaceVariables(filledHtml, record, variableOptions);
     filledHtml = await processQrcodes(filledHtml, record);
     filledHtml = wrapHtmlAsWordDocument(filledHtml, margins);
     buffers.push({ name: `record_${i + 1}.docx`, data: await buildDocx(filledHtml, record) });
@@ -710,7 +687,7 @@ async function renderColumnsFormat(templateConfig: any, records: Record<string, 
         const value = extractFieldValue(record, col.fieldPath);
         const displayValue = value != null ? value : col.defaultValue ?? '';
         const cell = worksheet.getCell(currentRow, colOffset);
-        cell.value = displayValue;
+        cell.value = toExcelCellValue(displayValue);
         if (blockHeight > 1) {
           worksheet.mergeCells(currentRow, colOffset, currentRow + blockHeight - 1, colOffset);
         }
@@ -729,7 +706,7 @@ async function renderColumnsFormat(templateConfig: any, records: Record<string, 
           }
         } else {
           const cell = worksheet.getCell(currentRow, colOffset);
-          cell.value = val != null ? val : col.defaultValue ?? '';
+          cell.value = toExcelCellValue(val != null ? val : col.defaultValue ?? '');
           if (blockHeight > 1) {
             worksheet.mergeCells(currentRow, colOffset, currentRow + blockHeight - 1, colOffset);
           }
@@ -755,7 +732,7 @@ async function renderColumnsFormat(templateConfig: any, records: Record<string, 
           }
         } else {
           const cell = worksheet.getCell(currentRow, colOffset);
-          cell.value = val != null ? val : col.defaultValue ?? '';
+          cell.value = toExcelCellValue(val != null ? val : col.defaultValue ?? '');
           if (count > 1) {
             worksheet.mergeCells(currentRow, colOffset, currentRow, colOffset + count - 1);
           }
@@ -857,7 +834,7 @@ async function renderSpreadsheetGrid(config: any, records: Record<string, any>[]
               value != null
                 ? value
                 : cell.defaultValue ?? (cell.text ? replaceTextPlaceholders(cell.text, record) : '');
-            worksheet.getCell(outputRow, outputCol).value = displayVal;
+            worksheet.getCell(outputRow, outputCol).value = toExcelCellValue(displayVal);
             outputCol++;
           }
           // 该列之后的列需要跳过被占用的索引
@@ -981,10 +958,30 @@ export class PluginTemplatePrintServer extends Plugin {
         // 查询目标数据表记录
         const targetCollection = ctx.db.getCollection(template.collectionName);
         const filterTargetKey = targetCollection?.filterTargetKey || 'id';
+
+        // 字段配置读取器：用于推导关联路径、计算 appends 与构建一对多表格列
+        const getCollectionFieldOptions: CollectionFieldsGetter = (collectionName: string) => {
+          const collection = ctx.db.getCollection(collectionName);
+          if (!collection) return undefined;
+          return Array.from(collection.fields.entries(), ([name, field]) => {
+            const options = (field.options || {}) as Partial<PrintFieldOptions>;
+            return { ...options, name };
+          });
+        };
+
+        // 根据模板中的占位符自动计算需要预加载的关联字段（appends），
+        // 保证关联字段（尤其是一对多字段渲染表格）的数据可用
+        const fieldPaths = collectTemplateFieldPaths(template.content, template.pageSettings);
+        const relationAppends = fieldPaths
+          .map((path) => findRelationAppend(getCollectionFieldOptions, template.collectionName, path))
+          .filter((append): append is string => Boolean(append));
+        const requestedAppends: string[] = ctx.action.params.appends || [];
+        const appends = Array.from(new Set([...requestedAppends, ...relationAppends]));
+
         const targetRepo = ctx.db.getRepository(template.collectionName);
         const records = await targetRepo.find({
           filter: { [Array.isArray(filterTargetKey) ? filterTargetKey[0] : filterTargetKey]: validRecordIds },
-          appends: ctx.action.params.appends || [],
+          appends,
         });
 
         if (!records || records.length === 0) {
@@ -1000,7 +997,19 @@ export class PluginTemplatePrintServer extends Plugin {
 
         // 根据模板类型调用对应的渲染函数
         if (template.type === 'word') {
-          buffer = await renderWord(template.content, plainRecords, template.pageSettings);
+          // 一对多字段渲染为表格：解析字段路径对应的表格列（带缓存，避免重复遍历）
+          const tableColumnsCache = new Map<string, TableColumn[]>();
+          const variableOptions: ReplaceVariablesOptions = {
+            getTableColumns: (fieldPath: string) => {
+              let columns = tableColumnsCache.get(fieldPath);
+              if (!columns) {
+                columns = getToManyRelationTableColumns(getCollectionFieldOptions, template.collectionName, fieldPath);
+                tableColumnsCache.set(fieldPath, columns);
+              }
+              return columns;
+            },
+          };
+          buffer = await renderWord(template.content, plainRecords, template.pageSettings, variableOptions);
           if (plainRecords.length > 1) {
             // 多条记录：返回 ZIP 包
             contentType = 'application/zip';

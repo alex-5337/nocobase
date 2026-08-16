@@ -28,7 +28,7 @@ import {
   getPluginBrowserSourcePackages,
   getSourcePackages,
 } from './utils/buildPluginUtils';
-import { getDepPkgPath, getDepsConfig } from './utils/getDepsConfig';
+import { findDepDir, getDepPkgPath, getDepsConfig, getEsmEntryRel } from './utils/getDepsConfig';
 import { obfuscate } from './utils/obfuscationResult';
 import { AutoInjectPublicPathPlugin } from './injectPublicPathPlugin';
 
@@ -300,6 +300,74 @@ export function writeExternalPackageVersion(cwd: string, log: PkgLog) {
   fs.writeFileSync(externalVersionPath, `module.exports = ${JSON.stringify(data, null, 2)};`);
 }
 
+/**
+ * 原样复制依赖包目录到 dist/node_modules（不做 ncc 打包），并递归复制其运行时依赖（平铺存放）。
+ *
+ * 用于 ESM-only 依赖（exports 只有 import 条件）：ncc 基于 CJS 的 require.resolve 无法解析
+ * 这类包的入口，且 import.meta.url、按平台动态拼接路径的原生 .node 资源也无法被 ncc 正确收集。
+ * 复制后会为产物的 package.json exports 补一个 default 条件，使插件的 CJS 产物能通过
+ * require 解析到入口，实际加载依赖 Node >= 22.12 的 require(esm) 能力。
+ */
+async function copyPackageAsIs(
+  packageName: string,
+  fromDir: string,
+  outDir: string,
+  external: string[],
+  skipNames: Set<string>,
+  handled: Set<string>,
+  log: PkgLog,
+): Promise<void> {
+  if (handled.has(packageName) || skipNames.has(packageName) || external.includes(packageName)) {
+    return;
+  }
+  handled.add(packageName);
+
+  const depDir = findDepDir(packageName, fromDir);
+  if (!depDir) {
+    log('dependency %s not found for copy, please install it first.', chalk.yellow(packageName));
+    return;
+  }
+  const pkg = await fs.readJson(path.join(depDir, 'package.json'));
+  const outputDir = path.join(outDir, packageName);
+  const outputPackageJson = path.join(outputDir, 'package.json');
+
+  // cache check（命中缓存也要继续递归，防止上次构建中断导致传递依赖缺失）
+  let cached = false;
+  if (fs.existsSync(outputPackageJson)) {
+    try {
+      cached = (await fs.readJson(outputPackageJson)).version === pkg.version;
+    } catch {
+      cached = false;
+    }
+  }
+
+  if (!cached) {
+    await fs.remove(outputDir);
+    await fs.copy(depDir, outputDir, {
+      filter: (src) => path.basename(src) !== 'node_modules',
+    });
+
+    // 为副本的 exports 补一个 CJS require 可达的 default 条件（不改变 import 的解析结果）
+    const patchedPkg = { ...pkg };
+    if (patchedPkg.exports && typeof patchedPkg.exports === 'object' && !Array.isArray(patchedPkg.exports)) {
+      const dot = patchedPkg.exports['.'];
+      const hasRequireAccess =
+        typeof dot === 'string' || (dot && typeof dot === 'object' && ('require' in dot || 'default' in dot));
+      if (!hasRequireAccess) {
+        patchedPkg.exports['.'] = { ...(dot && typeof dot === 'object' ? dot : {}), default: getEsmEntryRel(pkg) };
+      }
+    }
+
+    await fs.writeJson(outputPackageJson, { ...patchedPkg, _lastModified: new Date().toISOString() }, { spaces: 2 });
+    log('%s is ESM-only, copied to dist/node_modules instead of ncc bundling.', chalk.yellow(packageName));
+  }
+
+  // 递归复制传递依赖
+  for (const depName of Object.keys(pkg.dependencies || {})) {
+    await copyPackageAsIs(depName, depDir, outDir, external, skipNames, handled, log);
+  }
+}
+
 export async function buildServerDeps(cwd: string, serverFiles: string[], log: PkgLog) {
   log('build plugin server dependencies');
   const outDir = path.join(cwd, target_dir, 'node_modules');
@@ -331,8 +399,21 @@ export async function buildServerDeps(cwd: string, serverFiles: string[], log: P
   const deps = getDepsConfig(cwd, outDir, includePackages, external);
 
   // bundle deps
+  const nccBundledNames = new Set(
+    Object.values(deps)
+      .filter((item) => !item.esmOnly)
+      .map((item) => item.pkg.name as string),
+  );
+  const copiedAsIs = new Set<string>();
   for (const dep of Object.keys(deps)) {
-    const { outputDir, mainFile, pkg, nccConfig, depDir } = deps[dep];
+    const { outputDir, mainFile, pkg, nccConfig, depDir, esmOnly } = deps[dep];
+
+    // ESM-only 依赖无法被 ncc 打包，改为原样复制
+    if (esmOnly) {
+      await copyPackageAsIs(pkg.name as string, cwd, outDir, external, nccBundledNames, copiedAsIs, log);
+      continue;
+    }
+
     const outputPackageJson = path.join(outputDir, 'package.json');
 
     // cache check
@@ -377,9 +458,14 @@ export async function buildServerDeps(cwd: string, serverFiles: string[], log: P
         fs.writeFileSync(mainFile, code, 'utf-8');
 
         // emit assets
+        // ncc 运行时通过 `r.ab = __dirname + "/"`（即打包产物入口文件所在目录）定位资源。
+        // 当依赖入口嵌套在子目录（如 main 指向 lib/index.cjs）时，mainFile 会被写到 outputDir
+        // 的子目录下，此时资源也必须写到入口同级目录，否则原生模块（.node）等资源会因路径错位
+        // 而在加载时报 "Cannot find the native ... module"。入口位于包根目录时二者相等，行为不变。
+        const assetBaseDir = path.dirname(mainFile);
         Object.entries(assets).forEach(([name, item]) => {
-          fs.ensureDirSync(path.dirname(path.join(outputDir, name)));
-          fs.writeFileSync(path.join(outputDir, name), item.source, {
+          fs.ensureDirSync(path.dirname(path.join(assetBaseDir, name)));
+          fs.writeFileSync(path.join(assetBaseDir, name), item.source, {
             encoding: 'utf-8',
             mode: item.permissions,
           });

@@ -87,6 +87,11 @@ export const CurrentUserProvider = (props) => {
         });
         return res?.data;
       }),
+    {
+      // 未登录时 auth:check 返回 401 属预期行为（跳转登录页由 RootRedirect 依据 token 处理），
+      // 提供 onError 以免 ahooks 缺省把该错误打印到控制台
+      onError: () => {},
+    },
   );
 
   const { render } = useAppSpin();

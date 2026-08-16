@@ -28,6 +28,20 @@ const PLACEHOLDER_TEXT = 'QRCODE';
 const ASSOCIATION_TYPES = new Set(['belongsTo', 'hasOne', 'hasMany', 'belongsToMany', 'belongsToArray']);
 
 /**
+ * 一对多关联字段类型集合。
+ * 一对多字段作为叶子节点可直接选中：插入 Word 模板时整体作为变量，打印渲染为表格。
+ */
+const TO_MANY_TYPES = new Set(['hasMany', 'belongsToMany', 'belongsToArray']);
+
+/**
+ * 级联选项类型：额外携带一对多字段元数据，
+ * 供选择器判断选中后应插入变量还是打开一对多表格弹窗。
+ */
+export interface FieldOption extends DefaultOptionType {
+  fieldMeta?: { isToMany: boolean; target?: string };
+}
+
+/**
  * 字段树最大递归深度，防止循环关联导致无限递归
  */
 const MAX_DEPTH = 4;
@@ -63,14 +77,19 @@ export function buildFieldOptionsTree(
       .map((field) => {
         // 判断是否为关联字段
         const isAssociation = ASSOCIATION_TYPES.has(field.type);
-        const option: DefaultOptionType = {
+        const isToMany = TO_MANY_TYPES.has(field.type);
+        const option: FieldOption = {
           value: field.name,
           label: compile(field.uiSchema?.title || field.name),
-          // 关联字段不是叶子节点，可以继续展开
-          isLeaf: !isAssociation,
+          // 一对多字段是叶子节点（整体插入、打印为表格）；其余关联字段可继续展开子级
+          isLeaf: !isAssociation || isToMany,
         };
-        // 如果是关联字段且有关联目标，递归构建子级选项
-        if (isAssociation && field.target) {
+        // 携带一对多元数据：选中后客户端可据此打开「一对多表格」弹窗
+        if (isToMany) {
+          option.fieldMeta = { isToMany: true, target: field.target };
+        }
+        // 一对多以外的关联字段（多对一/一对一）递归构建子级选项
+        if (isAssociation && !isToMany && field.target) {
           const children = buildFieldOptionsTree(field.target, getCollectionFields, compile, depth + 1);
           if (children.length > 0) {
             option.children = children;

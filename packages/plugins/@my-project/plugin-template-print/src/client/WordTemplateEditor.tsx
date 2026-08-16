@@ -25,9 +25,10 @@ import 'quill-table-better/dist/quill-table-better.css';
 import { useTranslation } from 'react-i18next';
 import { useAPIClient } from '@nocobase/client';
 import { NAMESPACE } from './locale';
-import { CollectionFieldPicker } from './CollectionFieldPicker';
+import { CollectionFieldPicker, InsertFieldMeta } from './CollectionFieldPicker';
 import { QrcodeInsertModal, type QrcodeConfig } from './QrcodeInsertModal';
 import { generateQrcodePlaceholderHTML, getConfigFromImg, QRCODE_ICON_SVG } from './qrcode-utils';
+import { ToManyTableModal, buildRepeatTableHtml, type ToManyTableConfig } from './ToManyTableModal';
 import { registerFonts, DEFAULT_FONTS } from './font-utils';
 import {
   registerSizes,
@@ -48,6 +49,14 @@ registerFonts(DEFAULT_FONTS);
 // 注册字体大小和行间距格式
 registerSizes();
 registerLineHeights();
+
+/**
+ * 剥离 quill-table-better 残留的 <temporary> 暂存元素（与 quill 官方 getCopyTable 一致，直接删除）。
+ * 编辑器内 .ql-table-temporary{display:none} 使其内容不可见，但保存后 Word 打印时不识别该 CSS，
+ * 会把暂存内容（如二维码图片）渲染在表格内部，导致内容重叠/遮盖。
+ */
+const TEMPORARY_TAG_RE = /<temporary\b[^>]*>[\s\S]*?<\/temporary>/gi;
+const stripTemporaryTags = (html: string) => html.replace(TEMPORARY_TAG_RE, '');
 
 /**
  * 注册一个虚拟 blot，使 Quill 工具栏将 'qrcode' 识别为已知格式，
@@ -203,6 +212,10 @@ interface Props {
   pageSettings?: PageSettings;
   /** 切页/新增页/删除页时触发（用于外部自动保存，防止内容丢失） */
   onPageChange?: () => void;
+  /** 全屏模式下顶部「确定」按钮回调（不传则全屏不显示按钮） */
+  onSave?: () => void;
+  /** 全屏模式下顶部「取消」按钮回调（不传则全屏不显示按钮） */
+  onCancel?: () => void;
 }
 
 /** 纸张尺寸定义（twips），与 server 端保持一致 */
@@ -439,7 +452,7 @@ function buildToolbarHtml(fonts: (string | false)[], t: (key: string) => string)
 }
 
 export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
-  ({ form, pageSettings, onPageChange }, ref) => {
+  ({ form, pageSettings, onPageChange, onSave, onCancel }, ref) => {
     const { t } = useTranslation(NAMESPACE);
     const apiClient = useAPIClient();
     // 通过 Form.useWatch 监听表单中 collectionName 字段的变化
@@ -461,6 +474,8 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
     const [editingQrcodeConfig, setEditingQrcodeConfig] = useState<QrcodeConfig | undefined>(undefined);
     // 正在编辑的二维码 DOM 元素（用于编辑模式下的替换）
     const editingQrcodeElRef = useRef<HTMLElement | null>(null);
+    // 一对多表格弹窗状态（选择一对多字段时打开）
+    const [toManyModal, setToManyModal] = useState<{ fieldPath: string; target: string } | null>(null);
 
     // 每页内容（HTML 数组），初始从表单 content 按分页符拆分
     const [pages, setPages] = useState<string[]>(() => {
@@ -644,10 +659,12 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
      */
     const handleChange = useCallback(
       (html: string) => {
-        setValue(html);
+        // 剥离 quill-table-better 残留的 <temporary>，避免其内容随模板持久化
+        const clean = stripTemporaryTags(html);
+        setValue(clean);
         setPages((prev) => {
           const next = [...prev];
-          next[currentPage] = html;
+          next[currentPage] = clean;
           form.setFieldsValue({ content: next.join(PAGE_BREAK) });
           return next;
         });
@@ -659,15 +676,22 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
     useImperativeHandle(ref, () => ({
       getHTML: () => {
         const editor = getEditorSafe();
-        return pages.map((p, i) => (i === currentPage && editor ? editor.root.innerHTML : p)).join(PAGE_BREAK);
+        return stripTemporaryTags(
+          pages.map((p, i) => (i === currentPage && editor ? editor.root.innerHTML : p)).join(PAGE_BREAK),
+        );
       },
     }));
 
     /**
      * 插入数据字段变量（如 {customerName}）到当前页。
+     * 一对多字段不直接插入变量，而是打开「一对多表格」弹窗，生成可编辑表格后插入。
      */
     const handleInsertVariable = useCallback(
-      (fieldPath: string) => {
+      (fieldPath: string, meta?: InsertFieldMeta) => {
+        if (meta?.isToMany && meta.target) {
+          setToManyModal({ fieldPath, target: meta.target });
+          return;
+        }
         const editor = getEditorSafe();
         if (!editor) return;
         const variableText = `{${fieldPath}}`;
@@ -681,6 +705,26 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
           editor.setSelection(length + variableText.length);
         }
         editor.focus();
+      },
+      [getEditorSafe],
+    );
+
+    /**
+     * 插入一对多可编辑表格到当前页（表格带标记 class，服务端按浮动方向展开重复行/列）。
+     */
+    const handleInsertToManyTable = useCallback(
+      (config: ToManyTableConfig) => {
+        const editor = getEditorSafe();
+        if (!editor) return;
+        const tableHtml = buildRepeatTableHtml(config);
+        const selection = editor.getSelection() || lastSelectionRef.current;
+        if (selection) {
+          editor.clipboard.dangerouslyPasteHTML(selection.index, tableHtml);
+        } else {
+          editor.clipboard.dangerouslyPasteHTML(editor.getLength(), tableHtml);
+        }
+        editor.focus();
+        setToManyModal(null);
       },
       [getEditorSafe],
     );
@@ -1076,13 +1120,26 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
           <span style={{ color: '#666', fontSize: 12 }}>
             {t('Tip: Click the variable button to insert data fields, e.g. {customerName}. Or type them directly.')}
           </span>
-          <Button
-            size="small"
-            icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-            onClick={() => setFullscreen((v) => !v)}
-          >
-            {fullscreen ? t('Exit Fullscreen') : t('Fullscreen')}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* 全屏模式下提供「取消/确定」，等价于弹窗底部操作（全屏覆盖层会遮挡弹窗底部按钮） */}
+            {fullscreen && onSave && onCancel && (
+              <>
+                <Button size="small" onClick={onCancel}>
+                  {t('Cancel')}
+                </Button>
+                <Button size="small" type="primary" onClick={onSave}>
+                  {t('Save')}
+                </Button>
+              </>
+            )}
+            <Button
+              size="small"
+              icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+              onClick={() => setFullscreen((v) => !v)}
+            >
+              {fullscreen ? t('Exit Fullscreen') : t('Fullscreen')}
+            </Button>
+          </div>
         </div>
 
         {/* 共享 Quill 工具栏：与输入框分离，固定在顶部（编辑区滚动时始终可见）。
@@ -1153,6 +1210,13 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
               margin: 0 !important;
               /* 透明以透出页面背景图（白色底由外层页面框提供） */
               background: transparent;
+            }
+            /* 维表「向右浮动」模拟表头单元格的统一外观类。
+               注意：Word 打印不识别 CSS 类，外观以内联样式（REPEAT_HEADER_CELL_STYLE）为准，
+               此处类样式用于编辑器内语义化统一与自定义。 */
+            .word-template-editor-page .ql-print-repeat-header-cell {
+              background-color: #f0f0f0;
+              text-align: center;
             }
           `}</style>
           {/* Quill 按钮/下拉：以 HTML 字符串渲染（React 不 diff 内部，避免摧毁 Quill 转换的 picker） */}
@@ -1280,6 +1344,15 @@ export const WordTemplateEditor = forwardRef<WordTemplateEditorHandle, Props>(
             setQrcodeModalOpen(false);
             setEditingQrcodeConfig(undefined);
           }}
+        />
+
+        {/* 一对多表格插入弹窗：选择显示字段与浮动方向 */}
+        <ToManyTableModal
+          open={Boolean(toManyModal)}
+          fieldPath={toManyModal?.fieldPath || ''}
+          targetCollection={toManyModal?.target || ''}
+          onOk={handleInsertToManyTable}
+          onCancel={() => setToManyModal(null)}
         />
       </div>
     );

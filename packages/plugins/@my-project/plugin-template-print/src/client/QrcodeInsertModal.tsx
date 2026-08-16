@@ -8,11 +8,11 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Radio, Space, Cascader } from 'antd';
+import { Modal, Form, Input, InputNumber, Radio, Space, Cascader, Tag } from 'antd';
 import { useCollectionManager_deprecated, useCompile } from '@nocobase/client';
 import { useTranslation } from 'react-i18next';
 import { NAMESPACE } from './locale';
-import { buildFieldOptionsTree } from './qrcode-utils';
+import { buildFieldOptionsTree, FieldOption } from './qrcode-utils';
 
 /**
  * 二维码配置接口
@@ -162,6 +162,17 @@ export const QrcodeInsertModal: React.FC<QrcodeInsertModalProps> = ({
               placeholder={t('Select a field')}
               style={{ width: '100%' }}
               disabled={!collectionName}
+              optionRender={(option) => (
+                // 一对多字段在选项后标记「维表」，提示该字段为关联集合（二维码通常应选择普通字段）
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>{option.label}</span>
+                  {(option as FieldOption).fieldMeta?.isToMany && (
+                    <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                      {t('To-many')}
+                    </Tag>
+                  )}
+                </span>
+              )}
             />
           </Form.Item>
         )}

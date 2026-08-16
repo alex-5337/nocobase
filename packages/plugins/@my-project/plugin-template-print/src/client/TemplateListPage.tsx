@@ -1401,6 +1401,8 @@ export const TemplateListPage: React.FC = () => {
                         form={form}
                         pageSettings={pageSettings}
                         onPageChange={handleAutoSave}
+                        onSave={handleSave}
+                        onCancel={() => setModalVisible(false)}
                       />
                     ) : (
                       <ExcelTemplateEditor form={form} />
