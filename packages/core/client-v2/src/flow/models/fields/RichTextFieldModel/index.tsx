@@ -10,7 +10,7 @@
 import React from 'react';
 import { largeField, EditableItemModel } from '@nocobase/flow-engine';
 import { sanitizeRichTextHtml } from '@nocobase/utils/client';
-import type ReactQuillComponent from 'react-quill';
+import type ReactQuillComponent from 'react-quill-new';
 import { lazy } from '../../../../flow-compat';
 import { useRichTextStyles } from './style';
 import { FieldModel } from '../../base';

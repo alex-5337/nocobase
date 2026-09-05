@@ -21,7 +21,7 @@ const mockState = vi.hoisted(() => ({
   value: undefined as unknown,
 }));
 
-vi.mock('react-quill', () => ({
+vi.mock('react-quill-new', () => ({
   default: (props: { onChange?: (value: string) => void; value?: unknown }) => {
     mockState.onChange = props.onChange;
     mockState.value = props.value;

@@ -12,7 +12,7 @@ import { sanitizeRichTextHtml } from '@nocobase/utils/client';
 import React, { useEffect, useRef } from 'react';
 import { css } from '@emotion/css';
 import classNames from 'classnames';
-import type ReactQuillComponent from 'react-quill';
+import type ReactQuillComponent from 'react-quill-new';
 import { lazy } from '../../../lazy-helper';
 import { isVariable } from '../../../variables/utils/isVariable';
 import { ReadPretty as InputReadPretty } from '../input';

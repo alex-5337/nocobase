@@ -1,0 +1,2 @@
+warning Resolution field "dayjs@1.11.13" is incompatible with requested version "dayjs@~1.8.24"
+warning Resolution field "nwsapi@2.2.7" is incompatible with requested version "nwsapi@^2.2.12"
