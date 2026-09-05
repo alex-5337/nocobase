@@ -63,30 +63,38 @@ export const CurrentUserProvider = (props) => {
   const location = useLocation();
   const runtimeFlowEngine = app?.flowEngine || flowEngine;
   const hasLoadedRef = useRef(false);
-  const result = useRequest<any>(() =>
-    api
-      .request({
-        url: '/auth:check',
-        skipNotify: true,
-        skipAuth: true,
-      })
-      .then((res) => {
-        if (res?.data?.data?.id == null) {
-          navigate('/signin?redirect=' + location.pathname + location.search);
-        }
-        const userMeta = createCollectionContextMeta(
-          () => runtimeFlowEngine.context.dataSourceManager.getDataSource('main')?.getCollection('users'),
-          runtimeFlowEngine.translate('Current user'),
-        );
-        // 排序：用户优先显示
-        userMeta.sort = 1000;
-        runtimeFlowEngine.context.defineProperty('user', {
-          value: res?.data?.data,
-          resolveOnServer: true,
-          meta: userMeta,
-        });
-        return res?.data;
-      }),
+  const result = useRequest<any>(
+    () =>
+      api
+        .request({
+          url: '/auth:check',
+          skipNotify: true,
+          skipAuth: true,
+        })
+        .then(async (res) => {
+          const currentUser = res?.data?.data;
+          if (currentUser?.id == null) {
+            navigate('/signin?redirect=' + location.pathname + location.search);
+          } else {
+            try {
+              await api.auth.syncCookies();
+            } catch {
+              // Cookie bootstrap is best-effort; auth:check remains the source of truth for the current page load.
+            }
+          }
+          const userMeta = createCollectionContextMeta(
+            () => runtimeFlowEngine.context.dataSourceManager.getDataSource('main')?.getCollection('users'),
+            runtimeFlowEngine.translate('Current user'),
+          );
+          // 排序：用户优先显示
+          userMeta.sort = 1000;
+          runtimeFlowEngine.context.defineProperty('user', {
+            value: res?.data?.data,
+            resolveOnServer: true,
+            meta: userMeta,
+          });
+          return res?.data;
+        }),
     {
       // 未登录时 auth:check 返回 401 属预期行为（跳转登录页由 RootRedirect 依据 token 处理），
       // 提供 onError 以免 ahooks 缺省把该错误打印到控制台
