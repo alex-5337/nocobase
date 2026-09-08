@@ -7,6 +7,15 @@
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
 
+/**
+ * This file is part of the NocoBase (R) project.
+ * Copyright (c) 2020-2024 NocoBase Co., Ltd.
+ * Authors: NocoBase Team.
+ *
+ * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
+ * For more information, please refer to: https://www.nocobase.com/agreement.
+ */
+
 import { RsdoctorRspackPlugin } from '@rsdoctor/rspack-plugin';
 import { rspack } from '@rspack/core';
 import ncc from '@vercel/ncc';
@@ -162,6 +171,9 @@ const external = [
   'pg',
   'pg-hstore',
   'sqlite3',
+  // office-oxide 通过 require.resolve('../package.json') 定位包目录，再按平台拼接 prebuilds 下的原生库路径。
+  // ncc 会把 require.resolve 的结果替换成模块 id（数字），产物加载时抛 ERR_INVALID_ARG_TYPE，因此必须外置。
+  'office-oxide',
   'supertest',
   'axios',
   '@emotion/css',
