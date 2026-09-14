@@ -8,8 +8,10 @@ es/
 .env
 .env.e2e
 .DS_Store
+install*.log
 yarn-error.log
 lerna-debug.log
+*.log
 /.vscode
 /.idea
 *.sqlite
