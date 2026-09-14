@@ -1,0 +1,28 @@
+{
+  "name": "@my-project/plugin-password-policy",
+  "displayName": "Password policy",
+  "displayName.zh-CN": "密码策略",
+  "description": "Password complexity rules and sign-in failure lockout, configured under the security settings.",
+  "description.zh-CN": "密码复杂度规则与登录失败锁定，可在安全性设置中配置。",
+  "version": "2.2.6",
+  "main": "dist/server/index.js",
+  "keywords": [
+    "Security"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "ahooks": "3.x",
+    "antd": "5.x",
+    "dayjs": "1.x",
+    "react": "^18.2.0",
+    "react-i18next": "^11.15.1"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/plugin-users": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  }
+}
