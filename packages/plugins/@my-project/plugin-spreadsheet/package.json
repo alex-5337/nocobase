@@ -1,0 +1,24 @@
+{
+  "name": "@my-project/plugin-spreadsheet",
+  "displayName": "Spreadsheet (SheetJS)",
+  "displayName.zh-CN": "电子表格（SheetJS）",
+  "description": "Exposes the SheetJS spreadsheet toolkit to the RunJS sandbox as ctx.libs.xlsx, for reading and writing xlsx/xls/csv files from JS blocks, fields and actions.",
+  "description.zh-CN": "把 SheetJS 电子表格工具库注入到 RunJS 沙箱的 ctx.libs.xlsx，便于在 JS 区块、JS 字段、JS 操作中读写 xlsx/xls/csv 文件。",
+  "version": "2.2.12",
+  "main": "dist/server/index.js",
+  "keywords": [
+    "RunJS",
+    "Spreadsheet"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "xlsx-js-style": "^1.2.0"
+  },
+  "peerDependencies": {
+    "@nocobase/client": "2.x",
+    "@nocobase/client-v2": "2.x",
+    "@nocobase/flow-engine": "2.x",
+    "@nocobase/server": "2.x",
+    "@nocobase/test": "2.x"
+  }
+}

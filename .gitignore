@@ -81,3 +81,7 @@ openspec/
 /skills
 /skills-lock.json
 paseo.json
+
+# 临时工作目录与临时文件
+.tmp*/
+.tmp-*.json
