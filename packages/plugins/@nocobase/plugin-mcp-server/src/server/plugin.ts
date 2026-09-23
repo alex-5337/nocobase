@@ -13,6 +13,7 @@ import type PluginIdpOauthServer from '@nocobase/plugin-idp-oauth';
 import { collectMcpToolsFromSwagger, normalizePackagePatterns } from './mcp-tools';
 import { McpServer } from './mcp-server';
 import { createCrudTools } from './crud-tool';
+import { createFileUploadTool } from './file-upload-tool';
 
 function normalizeBasePath(path = '') {
   const normalized = path.replace(/\/+/g, '/').replace(/\/$/, '');
@@ -141,6 +142,7 @@ export class PluginMcpServerServer extends Plugin {
         .then((apiTools) => [
           ...apiTools,
           ...createCrudTools({ app: this.app, mcpToolsManager: this.ai.mcpToolsManager }),
+          createFileUploadTool({ app: this.app, mcpToolsManager: this.ai.mcpToolsManager }),
         ])
         .catch((error) => {
           this.mcpToolsCache.delete(cacheKey);

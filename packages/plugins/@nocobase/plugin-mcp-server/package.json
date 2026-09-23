@@ -9,7 +9,9 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@types/mime-types": "^3.0.1",
     "light-my-request": "^6.6.0",
+    "mime-types": "^3.0.1",
     "openapi-mcp-generator": "^3.3.0"
   },
   "peerDependencies": {
