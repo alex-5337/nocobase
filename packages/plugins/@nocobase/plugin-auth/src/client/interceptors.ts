@@ -68,6 +68,11 @@ export function authCheckMiddleware({ app }: { app: Application }) {
 
     if (error.status === 401 && firstError?.code && AuthErrorCode[firstError.code]) {
       app.apiClient.auth.setToken('');
+      // 未登录或已注销时管理端仍会请求 roles:check、desktopRoutes:listAccessible 等接口，服务端返回 EMPTY_TOKEN
+      // 表示请求未携带任何凭据，属预期结果：应用随后会跳转登录页，不应再弹全局错误提示
+      if (firstError.code === AuthErrorCode.EMPTY_TOKEN && error.config) {
+        error.config.skipNotify = true;
+      }
       if (pathname === app.getHref('signin') && firstError?.code !== AuthErrorCode.EMPTY_TOKEN && error.config) {
         error.config.skipNotify = false;
       }

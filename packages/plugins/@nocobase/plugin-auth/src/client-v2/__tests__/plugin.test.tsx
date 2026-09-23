@@ -104,6 +104,38 @@ describe('plugin-auth client-v2', () => {
     });
   });
 
+  it('should silence 401 EMPTY_TOKEN so the signed-out shell does not raise a global error', async () => {
+    // Signed out, the admin shell still fires `roles:check` / `desktopRoutes:listAccessible`
+    // without an Authorization header, so the server answers EMPTY_TOKEN. The app is about to
+    // bounce to /signin, so showing the global "未认证。请登录以继续。" toast is wrong.
+    const navigateSpy = vi.fn();
+    const app = createMockClient({
+      publicPath: '/v2/',
+      plugins: [PluginAuthClientV2 as any],
+      router: { type: 'memory', initialEntries: ['/v2/admin/anywhere'] },
+    });
+    // `addPageTabItem({ menuKey: 'security' })` in plugin-auth's `load()` requires the parent menu to exist. In production, the v2 buildin plugin registers it; `createMockClient` does not load that plugin, so the test registers the menu directly before `app.load()`.
+    app.pluginSettingsManager.addMenuItem({ key: 'security', title: 'Security' });
+    await app.load();
+    app.router.router = {
+      basename: '/v2',
+      navigate: navigateSpy,
+      state: { location: { pathname: '/v2/admin/anywhere', search: '', hash: '' } },
+    } as any;
+
+    const error = {
+      response: { status: 401, data: { errors: [{ code: 'EMPTY_TOKEN' }] } },
+      config: {},
+    } as any;
+
+    // @ts-ignore
+    app.apiClient.axios.interceptors.response.handlers[0].rejected(error);
+
+    await vi.waitFor(() => {
+      expect(error.config.skipNotify).toBe(true);
+    });
+  });
+
   it('should not redirect skipped auth routes on runtime 401', async () => {
     const navigateSpy = vi.fn();
     const app = createMockClient({
